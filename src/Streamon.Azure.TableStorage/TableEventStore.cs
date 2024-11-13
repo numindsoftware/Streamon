@@ -1,7 +1,7 @@
 ﻿using Azure.Data.Tables;
 using Streamon;
 
-namespace Streamon.TableStorage;
+namespace Streamon.Azure.TableStorage;
 
 public class TableEventStore : IStreamStore
 {

@@ -6,30 +6,33 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Streamon.TableStorage;
+namespace Streamon.Azure.TableStorage;
 
 internal class EventEntity : ITableEntity
 {
+    public const string EventRowKeyFormat = "SO-EVENT-{000_000_000_000_000_000}";
+
     /// <summary>
     /// Stream Identifier
     /// </summary>
-    public required string PartitionKey { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+    public required string PartitionKey { get; set; }
     /// <summary>
-    /// Stram Logical Unit, can be (prefix):
-    /// SO-HEAD: One per stream, controls optimistic concurrency
-    /// SS-EVENT-{version}: Event line
-    /// SS-UID-{uuid}: Event Identity, one per each SS-EVENT, prevents duplicate event insertion
+    /// SS-EVENT-{sequence}: Event line
     /// </summary>
     public required string RowKey { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
     public DateTimeOffset? Timestamp { get; set; }
     public ETag ETag { get; set; }
 
+    public required long Sequence { get; set; }
+    public required string CreatedOn { get; set; }
     /// <summary>
     /// Fully qualified type name
     /// </summary>
-    public required string Type { get; set; }
-    public Guid Id { get; set; }
+    public required string EventType { get; set; }
+    /// <summary>
+    /// The unique identifier of the event
+    /// </summary>
+    public required string EventId { get; set; }
+    public required string Data { get; set; }
     public string? Metadata { get; set; }
-    public string? Data { get; set; }
-
 }
