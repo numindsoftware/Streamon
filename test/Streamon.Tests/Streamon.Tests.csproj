@@ -1,8 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <IsPackable>false</IsPackable>
-  </PropertyGroup>
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
@@ -19,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Streamon\Streamon.csproj" />
+    <ProjectReference Include="..\Streamon.Tests.Fixtures\Streamon.Tests.Fixtures.csproj" />
   </ItemGroup>
 
 </Project>

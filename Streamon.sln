@@ -21,6 +21,16 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Streamon.Azure.CosmosDb", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Streamon.Azure.TableStorage", "src\Streamon.Azure.TableStorage\Streamon.Azure.TableStorage.csproj", "{76AF1C1F-2AE9-44E4-AD76-B8B3D1EED2F6}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{3DF05FD9-0D6E-428D-A3AA-858488FC6C9D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{C86955EC-3D94-4BC9-9223-C3468D8BF4F5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Streamon.Azure.TableStorage.Tests", "test\Streamon.Azure.TableStorage.Tests\Streamon.Azure.TableStorage.Tests.csproj", "{76B9557E-F835-4A71-9981-4CC76EABBCC7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Streamon.Azure.CosmosDb.Tests", "test\Streamon.Azure.CosmosDb.Tests\Streamon.Azure.CosmosDb.Tests.csproj", "{760B809C-AACF-4E6A-8481-095B1FB7F21C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Streamon.Tests.Fixtures", "test\Streamon.Tests.Fixtures\Streamon.Tests.Fixtures.csproj", "{C57ECB2B-A8C8-472E-9D42-C31FBD05D73F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -43,9 +53,30 @@ Global
 		{76AF1C1F-2AE9-44E4-AD76-B8B3D1EED2F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{76AF1C1F-2AE9-44E4-AD76-B8B3D1EED2F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{76AF1C1F-2AE9-44E4-AD76-B8B3D1EED2F6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{76B9557E-F835-4A71-9981-4CC76EABBCC7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{76B9557E-F835-4A71-9981-4CC76EABBCC7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{76B9557E-F835-4A71-9981-4CC76EABBCC7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{76B9557E-F835-4A71-9981-4CC76EABBCC7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{760B809C-AACF-4E6A-8481-095B1FB7F21C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{760B809C-AACF-4E6A-8481-095B1FB7F21C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{760B809C-AACF-4E6A-8481-095B1FB7F21C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{760B809C-AACF-4E6A-8481-095B1FB7F21C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C57ECB2B-A8C8-472E-9D42-C31FBD05D73F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C57ECB2B-A8C8-472E-9D42-C31FBD05D73F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C57ECB2B-A8C8-472E-9D42-C31FBD05D73F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C57ECB2B-A8C8-472E-9D42-C31FBD05D73F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{51293C8E-00D1-4C90-B3D0-6C62438BC11B} = {3DF05FD9-0D6E-428D-A3AA-858488FC6C9D}
+		{F11E4C2E-5671-48CC-A71A-9EF658B1A9E6} = {C86955EC-3D94-4BC9-9223-C3468D8BF4F5}
+		{B7E170B4-DED4-4F06-9CD4-06848F6B8CB0} = {3DF05FD9-0D6E-428D-A3AA-858488FC6C9D}
+		{76AF1C1F-2AE9-44E4-AD76-B8B3D1EED2F6} = {3DF05FD9-0D6E-428D-A3AA-858488FC6C9D}
+		{76B9557E-F835-4A71-9981-4CC76EABBCC7} = {C86955EC-3D94-4BC9-9223-C3468D8BF4F5}
+		{760B809C-AACF-4E6A-8481-095B1FB7F21C} = {C86955EC-3D94-4BC9-9223-C3468D8BF4F5}
+		{C57ECB2B-A8C8-472E-9D42-C31FBD05D73F} = {C86955EC-3D94-4BC9-9223-C3468D8BF4F5}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F0B0C09A-9668-4463-A82C-E4F285C40CE6}

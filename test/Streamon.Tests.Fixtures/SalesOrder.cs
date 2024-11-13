@@ -1,8 +1,6 @@
-﻿using Streamon;
+﻿namespace Streamon.Tests.Fixtures;
 
-namespace Streamon.Tests.Fixtures;
-
-internal record SalesOrder()
+public record SalesOrder()
 {
     public SalesOrder When<TEvent>(TEvent @event) =>
         @event switch
