@@ -1,14 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-	<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.45.1" />
   </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Streamon\Streamon.csproj" />
   </ItemGroup>
+
 </Project>

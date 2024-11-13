@@ -1,0 +1,35 @@
+<Project>
+
+  <Import Project="$(SolutionDir)Directory.Build.props" />
+
+  <PropertyGroup>
+	
+    <!-- Package Information -->
+    <Authors>Bryan G</Authors>
+    <Product>Streamon</Product>
+    <PackageReadmeFile>../README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/numindsoftware/Streamon</RepositoryUrl>
+    <PackageTags>es eventsourcing eventstore event-sourcing event-store event azure stream storage cosmosdb</PackageTags>
+    <PackageIcon>../icon.png</PackageIcon>
+	<IncludeContentInPack>true</IncludeContentInPack>
+    
+    <!-- Licensing -->
+    <Copyright>MIT</Copyright>
+    <PackageLicenseFile>../LICENSE</PackageLicenseFile>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    	  
+    <!-- Build and Debugging -->
+    <IncludeSymbols>True</IncludeSymbols>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+
+	<ItemGroup>
+		<None Include="$(SolutionDir)LICENSE" Pack="true" PackagePath="" />
+		<None Include="$(SolutionDir)icon.png" Pack="true" PackagePath="" />
+		<None Include="$(SolutionDir)README.md" Pack="true" PackagePath="" />
+	</ItemGroup>
+
+	
+</Project>
