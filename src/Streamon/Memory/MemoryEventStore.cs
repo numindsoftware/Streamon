@@ -56,7 +56,7 @@ public class MemoryEventStore : IStreamStore
         @event is IHasEventMetadata metadata ? metadata.Metadata : default;
 
     private static IEnumerable<EventEnvelope> ConvertToEnvelopes(StreamPosition startingSequence, IEnumerable<object> events, EventMetadata? metadata) =>
-        events.Select((e, i) => new EventEnvelope(EventId.New(), startingSequence + i, DateTimeOffset.Now, e, metadata ?? ExtractMetadata(e)));
+        events.Select((e, i) => new EventEnvelope(EventId.New(), new(startingSequence.Value + i), DateTimeOffset.Now, e, metadata ?? ExtractMetadata(e)));
 
     private StreamPosition GlobalEventPosition { get => new(Math.Max(_streams.SelectMany(s => s.Value).Count() - 1, 0)); }
 }

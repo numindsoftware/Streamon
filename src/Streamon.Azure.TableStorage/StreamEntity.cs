@@ -40,4 +40,12 @@ internal class StreamEntity : ITableEntity
     /// The date and time when the stream was last updated
     /// </summary>
     public DateTimeOffset UpdatedOn { get; set; }
+    /// <summary>
+    /// Soft delete flag, only available at the Stream level for performance reasons
+    /// </summary>
+    public bool IsDeleted { get; set; }
+    /// <summary>
+    /// Deletion audit information
+    /// </summary>
+    public DateTimeOffset? DeletedOn { get; set; }
 }

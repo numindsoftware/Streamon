@@ -10,7 +10,8 @@ namespace Streamon.Azure.TableStorage;
 
 internal class EventEntity : ITableEntity
 {
-    public const string EventRowKeyFormat = "SO-EVENT-{000_000_000_000_000_000}";
+    public const string EventRowKeyPrefix = "SO-EVENT-";
+    public const string EventRowKeyFormat = EventRowKeyPrefix + "{000000000000000000}";
 
     /// <summary>
     /// Stream Identifier
@@ -24,11 +25,11 @@ internal class EventEntity : ITableEntity
     public ETag ETag { get; set; }
 
     public required long Sequence { get; set; }
-    public required string CreatedOn { get; set; }
+    public DateTimeOffset CreatedOn { get; set; } = DateTimeOffset.Now;
     /// <summary>
     /// Fully qualified type name
     /// </summary>
-    public required string EventType { get; set; }
+    public required string Type { get; set; }
     /// <summary>
     /// The unique identifier of the event
     /// </summary>
