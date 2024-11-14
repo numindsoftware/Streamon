@@ -1,5 +1,4 @@
 ﻿using Azure.Data.Tables;
-using System.Text.Json;
 
 namespace Streamon.Azure.TableStorage;
 
@@ -33,43 +32,64 @@ internal static class EventExtensions
         return streamEntity;
     }
 
-    public static IEnumerable<EventEntity> ExtractEventEntities(this IEnumerable<TableEntity> entities)
-    {
-        var eventEntities = entities
+    //public static IEnumerable<EventEntity> ExtractEventEntities(this IEnumerable<TableEntity> entities)
+    //{
+    //    var eventEntities = entities
+    //        .Where(e => e.RowKey.StartsWith(EventEntity.EventRowKeyPrefix))
+    //        .Select(e => new EventEntity()
+    //        {
+    //            PartitionKey = e.PartitionKey,
+    //            RowKey = e.RowKey,
+    //            Sequence = e.GetInt64Value(nameof(EventEntity.Sequence)),
+    //            CreatedOn = e.GetDateTimeOffsetValue(nameof(EventEntity.CreatedOn)),
+    //            Type = e.GetString(nameof(EventEntity.Type)) ?? string.Empty,
+    //            EventId = e.GetString(nameof(EventEntity.EventId)) ?? string.Empty,
+    //            Data = e.GetString(nameof(EventEntity.Data)) ?? string.Empty,
+    //            Metadata = e.GetString(nameof(EventEntity.Metadata)),
+    //        });
+    //    if (!eventEntities.Any()) throw new InvalidStreamStateException("No events found in stream");
+    //    return eventEntities;
+    //}
+
+    public static IEnumerable<EventEnvelope> ToEventEnvelopes(this IEnumerable<TableEntity> eventEntities, IStreamTypeProvider streamTypeProvider) =>
+        eventEntities
             .Where(e => e.RowKey.StartsWith(EventEntity.EventRowKeyPrefix))
-            .Select(e => e.ToEventEntity()!);
-        if (!eventEntities.Any()) throw new InvalidStreamStateException("No events found in stream");
-        return eventEntities;
-    }
+            .Select(e => new EventEnvelope(
+                    new EventId(e.GetString(nameof(EventEntity.EventId))),
+                    new StreamPosition(e.GetInt64Value(nameof(EventEntity.Sequence))),
+                    e.GetDateTimeOffsetValue(nameof(EventEntity.CreatedOn)),
+                    streamTypeProvider.ResolveEvent(e.GetString(nameof(EventEntity.Type)), e.GetString(nameof(EventEntity.Data))),
+                    streamTypeProvider.ResolveMetadata(e.GetString(nameof(EventEntity.Metadata)))));
 
-    //public static IEnumerable<EventEnvelope> ToEventEnvelopes(this IEnumerable<EventEntity> eventEntities, JsonSerializerOptions serializerOptions) =>
-    //    eventEntities.Select(e => e.ToEventEnvelope(serializerOptions));
+    //public static EventEntity ToEventEntity(this TableEntity entity) =>
+    //    new()
+    //    {
+    //        PartitionKey = entity.PartitionKey,
+    //        RowKey = entity.RowKey,
+    //        Sequence = entity.GetInt64Value(nameof(EventEntity.Sequence)),
+    //        CreatedOn = entity.GetDateTimeOffsetValue(nameof(EventEntity.CreatedOn)),
+    //        Type = entity.GetString(nameof(EventEntity.Type)) ?? string.Empty,
+    //        EventId = entity.GetString(nameof(EventEntity.EventId)) ?? string.Empty,
+    //        Data = entity.GetString(nameof(EventEntity.Data)) ?? string.Empty,
+    //        Metadata = entity.GetString(nameof(EventEntity.Metadata)),
+    //    };
 
-    public static EventEntity ToEventEntity(this TableEntity entity) =>
-        new()
-        {
-            PartitionKey = entity.PartitionKey,
-            RowKey = entity.RowKey,
-            Sequence = entity.GetInt64Value(nameof(EventEntity.Sequence)),
-            CreatedOn = entity.GetDateTimeOffsetValue(nameof(EventEntity.CreatedOn)),
-            Type = entity.GetString(nameof(EventEntity.Type)) ?? string.Empty,
-            EventId = entity.GetString(nameof(EventEntity.EventId)) ?? string.Empty,
-            Data = entity.GetString(nameof(EventEntity.Data)) ?? string.Empty,
-            Metadata = entity.GetString(nameof(EventEntity.Metadata)),
-        };
-
-    public static ITableEntity ToEventEntity(this object @event, StreamId streamId, StreamPosition position, JsonSerializerOptions serializerOptions) =>
-        new EventEntity
+    public static ITableEntity ToEventEntity(this object @event, StreamId streamId, StreamPosition position, EventMetadata? metadata, IStreamTypeProvider streamTypeProvider)
+    {
+        var eventTypeInfo = streamTypeProvider.SerializeEvent(@event);
+        var eventMetadata = @event is IHasEventMetadata eventWithMetadata ? (eventWithMetadata.Metadata ?? metadata) : metadata;
+        return new EventEntity
         {
             PartitionKey = streamId.Value,
             RowKey = string.Format(EventEntity.EventRowKeyFormat, position),
             Sequence = position.Value,
             EventId = @event.GetEventId().Value,
-            Data = @event.GetEventDataSerialized(serializerOptions),
-            Type = @event.GetEventType(),
-            Metadata = @event.GetEventMetadataSerialized(serializerOptions),
+            Data = eventTypeInfo.Data,
+            Type = eventTypeInfo.Type,
+            Metadata = streamTypeProvider.SerializeMetadata(eventMetadata),
             CreatedOn = DateTimeOffset.UtcNow,
         };
+    }
 
     public static ITableEntity ToEventIdEntity(this object @event, StreamId streamId, StreamPosition position) =>
         new EventIdEntity
@@ -90,16 +110,10 @@ internal static class EventExtensions
             CreatedOn = DateTimeOffset.UtcNow
         };
 
-    public static string GetEventDataSerialized(this object @event, JsonSerializerOptions serializerOptions) =>
-        JsonSerializer.Serialize(@event, serializerOptions);
-
-    public static string? GetEventMetadataSerialized(this object @event, JsonSerializerOptions serializerOptions) =>
-        @event is IHasEventMetadata metadata ? JsonSerializer.Serialize(metadata.Metadata, serializerOptions) : null;
-
-    public static IEnumerable<ITableEntity> ToEventEntityPair(this EventEnvelope eventEnvelope, StreamId streamId, JsonSerializerOptions serializerOptions)
+    public static IEnumerable<ITableEntity> ToEventEntityPair(this EventEnvelope eventEnvelope, StreamId streamId, EventMetadata? metadata, IStreamTypeProvider streamTypeProvider)
         =>
         [
-            eventEnvelope.Payload.ToEventEntity(streamId, eventEnvelope.StreamPosition, serializerOptions),
+            eventEnvelope.Payload.ToEventEntity(streamId, eventEnvelope.StreamPosition, metadata, streamTypeProvider),
             eventEnvelope.Payload.ToEventIdEntity(streamId, eventEnvelope.StreamPosition)
         ];
 }

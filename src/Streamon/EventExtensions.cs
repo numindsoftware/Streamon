@@ -34,8 +34,8 @@ public static class EventExtensions
         };
     }
 
-    public static string GetEventType(this object @event) =>
-        @event.GetType().GetCustomAttribute<EventTypeAttribute>()?.Name ?? @event.GetType().Name;
+    //public static string GetEventType(this object @event) =>
+    //    @event.GetType().GetCustomAttribute<EventTypeAttribute>()?.Name ?? @event.GetType().Name;
 
     public static EventEnvelope ToEventEnvelope(this object @event, StreamPosition position, DateTimeOffset timestamp, EventMetadata? metadata)
     {

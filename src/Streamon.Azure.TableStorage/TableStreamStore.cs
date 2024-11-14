@@ -1,9 +1,8 @@
 ﻿using Azure.Data.Tables;
-using System.Text.Json;
 
 namespace Streamon.Azure.TableStorage;
 
-public class TableStreamStore(TableClient tableClient, JsonSerializerOptions serializerOptions, TableStreamStoreOptions? options = default) : IStreamStore
+public class TableStreamStore(TableClient tableClient, IStreamTypeProvider streamTypeProvider, TableStreamStoreOptions? options = default) : IStreamStore
 {
     private readonly TableStreamStoreOptions _options = options ?? new();
 
@@ -14,12 +13,11 @@ public class TableStreamStore(TableClient tableClient, JsonSerializerOptions ser
         List<TableEntity> entities = [];
         await foreach(var entity in tableClient.QueryAsync<TableEntity>(e => e.PartitionKey == streamId.Value && !e.RowKey.StartsWith(EventIdEntity.EventIdRowKeyPrefix), cancellationToken: cancellationToken)) entities.Add(entity);
         
-        if (entities.Count() == 0) throw new StreamNotFoundException(streamId);
+        if (entities.Count == 0) throw new StreamNotFoundException(streamId);
         var streamEntity = entities.ExtractStreamEntity();
-        var eventEntities = entities.ExtractEventEntities();
+        var eventEnvelopes = entities.ToEventEnvelopes(streamTypeProvider);
 
-        throw new NotImplementedException();
-        //return new Stream(streamId, [.. eventEntities.Select(e => e.ToEventEnvelope(serializerOptions))], new(streamEntity.CurrentSequence));
+        return new Stream(streamId, [.. eventEnvelopes], new(streamEntity.CurrentSequence));
     }
 
     public async Task<Stream> AppendAsync(StreamId streamId, StreamPosition expectedPosition, IEnumerable<object> events, EventMetadata? metadata = null, CancellationToken cancellationToken = default)
@@ -36,12 +34,12 @@ public class TableStreamStore(TableClient tableClient, JsonSerializerOptions ser
             currentPosition = currentPosition.Next();
             return @event.ToEventEnvelope(currentPosition, DateTimeOffset.UtcNow, metadata);
         }).ToArray();
-        var eventPairs = envelopes.SelectMany(envelope => envelope.ToEventEntityPair(streamId, serializerOptions));
+        var eventPairs = envelopes.SelectMany(envelope => envelope.ToEventEntityPair(streamId, metadata, streamTypeProvider));
 
         // global position can be useful when projecting to event streams
         streamEntity.CurrentSequence = currentPosition.Value;
         streamEntity.GlobalSequence = _options.CalculateGlobalPosition
-                ? (await FetchLatestGlobalPositionAsync(streamId, cancellationToken).ConfigureAwait(false)).Value 
+                ? (await FetchLatestGlobalPositionAsync(cancellationToken).ConfigureAwait(false)).Value 
                 : currentPosition.Value;
 
 
@@ -69,9 +67,10 @@ public class TableStreamStore(TableClient tableClient, JsonSerializerOptions ser
         }
     }
 
-    private Task<StreamPosition> FetchLatestGlobalPositionAsync(StreamId streamId, CancellationToken cancellationToken = default)
+    private async Task<StreamPosition> FetchLatestGlobalPositionAsync(CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        List<StreamEntity> entities = [];
+        await foreach (var entity in tableClient.QueryAsync<StreamEntity>(e => e.RowKey == StreamEntity.StreamRowKey, cancellationToken: cancellationToken)) entities.Add(entity);
+        return entities.Count == 0 ? StreamPosition.Start : new(entities.Sum(e => e.CurrentSequence));
     }
-
 }

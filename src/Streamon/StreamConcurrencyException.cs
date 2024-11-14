@@ -1,5 +1,6 @@
 ﻿namespace Streamon;
 
+[Serializable]
 public class StreamConcurrencyException(StreamPosition expectedPosition, StreamPosition actualPosition, string? message = default, Exception? innerException = default)
     : Exception(message ?? $"Expected sequence {expectedPosition} but found {actualPosition}", innerException)
 {
