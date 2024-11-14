@@ -2,7 +2,7 @@
 
 namespace Streamon.Memory;
 
-public class MemoryEventStore : IStreamStore
+public class MemoryStreamStore : IStreamStore
 {
     private readonly Dictionary<StreamId, List<EventEnvelope>> _streams = [];
 

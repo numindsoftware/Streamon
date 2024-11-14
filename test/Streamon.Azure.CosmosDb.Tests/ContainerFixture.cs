@@ -5,18 +5,18 @@ namespace Streamon.Azure.CosmosDb.Tests;
 
 internal class ContainerFixture : IAsyncLifetime
 {
-    public ContainerFixture()
-    {
-        CosmosDbConfiguration configuration = new() { };
-        TestContainer = new CosmosDbContainer(configuration);
-        CosmosClient = new CosmosClient(TestContainer.GetConnectionString());
-    }
+    public ContainerFixture() => TestContainer = new CosmosDbBuilder().Build();
 
     public async Task DisposeAsync() => await TestContainer.DisposeAsync();
 
-    public async Task InitializeAsync() => await TestContainer.StartAsync();
+    public async Task InitializeAsync()
+    {
+        
+        await TestContainer.StartAsync();
+        CosmosClient = new CosmosClient(TestContainer.GetConnectionString());
+    }
 
     public CosmosDbContainer TestContainer { get; private set; }
 
-    public CosmosClient CosmosClient { get; private set; }
+    public CosmosClient? CosmosClient { get; private set; }
 }

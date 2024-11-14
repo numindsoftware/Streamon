@@ -8,7 +8,7 @@ public class InMemoryStreamStoreTests
     [Fact]
     public async Task CorrectlyAppendsNewEvents()
     {
-        MemoryEventStore eventStore = new();
+        MemoryStreamStore eventStore = new();
 
         StreamId streamId = new("order-123");
         IEnumerable<object> events = [new OrderCaptured("1"), new OrderConfirmed("1")];
