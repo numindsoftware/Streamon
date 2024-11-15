@@ -3,11 +3,10 @@ using Testcontainers.Azurite;
 
 namespace Streamon.Azure.TableStorage.Tests;
 
-
 public class ContainerFixture : IAsyncLifetime
 {
     public ContainerFixture() => 
-        TestContainer = new AzuriteBuilder().WithPortBinding(10002, true).Build();
+        TestContainer = new AzuriteBuilder().WithName("streamon-azurite").WithPortBinding(10002, true).Build();
 
     public async Task DisposeAsync() => 
         await TestContainer.DisposeAsync();

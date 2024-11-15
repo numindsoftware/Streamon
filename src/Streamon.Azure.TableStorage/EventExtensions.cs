@@ -22,7 +22,7 @@ internal static class EventExtensions
         {
             PartitionKey = entity.PartitionKey,
             RowKey = entity.RowKey,
-            CurrentSequence = entity.GetInt64Value(nameof(StreamEntity.CurrentSequence)),
+            Sequence = entity.GetInt64Value(nameof(StreamEntity.Sequence)),
             UpdatedOn = entity.GetDateTimeOffsetValue(nameof(StreamEntity.UpdatedOn)),
             GlobalSequence = entity.GetInt64Value(nameof(StreamEntity.GlobalSequence)),
             CreatedOn = entity.GetDateTimeOffsetValue(nameof(StreamEntity.CreatedOn)),
@@ -38,11 +38,12 @@ internal static class EventExtensions
             .Select(e => new EventEnvelope(
                     new EventId(e.GetString(nameof(EventEntity.EventId))),
                     new StreamPosition(e.GetInt64Value(nameof(EventEntity.Sequence))),
+                    new StreamPosition(e.GetInt64Value(nameof(EventEntity.GlobalSequence))),
                     e.GetDateTimeOffsetValue(nameof(EventEntity.CreatedOn)),
                     streamTypeProvider.ResolveEvent(e.GetString(nameof(EventEntity.Type)), e.GetString(nameof(EventEntity.Data))),
                     streamTypeProvider.ResolveMetadata(e.GetString(nameof(EventEntity.Metadata)))));
 
-    public static ITableEntity ToEventEntity(this object @event, StreamId streamId, StreamPosition position, EventMetadata? metadata, IStreamTypeProvider streamTypeProvider)
+    public static ITableEntity ToEventEntity(this object @event, EventId eventId, StreamId streamId, StreamPosition position, StreamPosition globalPosition, EventMetadata? metadata, IStreamTypeProvider streamTypeProvider)
     {
         var eventTypeInfo = streamTypeProvider.SerializeEvent(@event);
         return new EventEntity
@@ -50,7 +51,8 @@ internal static class EventExtensions
             PartitionKey = streamId.Value,
             RowKey = string.Format(EventEntity.EventRowKeyFormat, position),
             Sequence = position.Value,
-            EventId = @event.GetEventId().Value,
+            GlobalSequence = globalPosition.Value,
+            EventId = eventId.Value,
             Data = eventTypeInfo.Data,
             Type = eventTypeInfo.Type,
             Metadata = streamTypeProvider.SerializeMetadata(@event.GetEventMetadata(metadata)),
@@ -58,29 +60,20 @@ internal static class EventExtensions
         };
     }
 
-    public static ITableEntity ToEventIdEntity(this object @event, StreamId streamId, StreamPosition position) =>
-        new EventIdEntity
-        {
-            PartitionKey = streamId.Value,
-            RowKey = string.Format(EventIdEntity.EventIdRowKeyFormat, @event.GetEventId()),
-            Sequence = position.Value,
-        };
-
     public static StreamEntity ToStreamEntity(this StreamId streamId, StreamPosition currentPosition, StreamPosition globalPosition) =>
         new()
         {
             PartitionKey = streamId.Value,
             RowKey = StreamEntity.StreamRowKey,
-            CurrentSequence = currentPosition.Value,
+            Sequence = currentPosition.Value,
             UpdatedOn = DateTimeOffset.UtcNow,
             GlobalSequence = globalPosition.Value,
             CreatedOn = DateTimeOffset.UtcNow
         };
 
-    public static IEnumerable<ITableEntity> ToEventEntityPair(this EventEnvelope eventEnvelope, StreamId streamId, EventMetadata? metadata, IStreamTypeProvider streamTypeProvider)
-        =>
+    public static IEnumerable<ITableEntity> ToEventEntityPair(this EventEnvelope eventEnvelope, StreamId streamId, StreamPosition globalPosition, EventMetadata? metadata, IStreamTypeProvider streamTypeProvider) =>
         [
-            eventEnvelope.Payload.ToEventEntity(streamId, eventEnvelope.StreamPosition, metadata, streamTypeProvider),
-            eventEnvelope.Payload.ToEventIdEntity(streamId, eventEnvelope.StreamPosition)
+            eventEnvelope.Payload.ToEventEntity(eventEnvelope.EventId, streamId, eventEnvelope.StreamPosition, globalPosition, metadata, streamTypeProvider),
+            new EventIdEntity { PartitionKey = eventEnvelope.EventId.Value, RowKey = string.Format(EventIdEntity.EventIdRowKeyFormat, eventEnvelope.EventId) }
         ];
 }

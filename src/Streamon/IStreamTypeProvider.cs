@@ -6,5 +6,5 @@ public interface IStreamTypeProvider
     EventTypeInfo SerializeEvent(object @event);
 
     EventMetadata? ResolveMetadata(string data);
-    string SerializeMetadata(EventMetadata? metadata);
+    string? SerializeMetadata(EventMetadata? metadata);
 }

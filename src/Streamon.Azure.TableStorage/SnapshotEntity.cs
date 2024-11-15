@@ -22,11 +22,15 @@ internal class SnapshotEntity : ITableEntity
     /// </summary>
     public required long Sequence { get; set; }
     /// <summary>
+    /// The global sequence number when the snapshot was taken
+    /// </summary>
+    public required long GlobalSequence { get; set; }
+    /// <summary>
     /// The date and time when the snapshot was created
     /// </summary>
     public required string CreatedOn { get; set; }
     /// <summary>
-    /// The type marker to deserialize the snapshot data
+    /// The type marker to deserialize the snapshot data, only one per type per stream
     /// </summary>
     public required string Type { get; set; }
     /// <summary>

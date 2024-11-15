@@ -12,4 +12,6 @@ public class TableStreamStoreOptions
     /// Azure table does not allow for batch delete operations, so each entity will be deleted one by one.
     /// </summary>
     public bool DisableSoftDelete { get; set; } = false;
+
+    public byte TransactionBatchSize { get; set; } = 100;
 }

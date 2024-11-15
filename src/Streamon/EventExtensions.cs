@@ -12,7 +12,7 @@ public static class EventExtensions
         if (!EventIdMembersMap.TryGetValue(@event.GetType(), out MemberInfo? eventIdMember))
         {
             eventIdMember = @event.GetType()
-                .GetMembers(BindingFlags.Instance)
+                .GetMembers(BindingFlags.Instance | BindingFlags.Public)
                 .Where(static mi => mi.GetCustomAttribute<EventIdAttribute>() != null)
                 .FirstOrDefault();
             if (eventIdMember is not null)
@@ -33,10 +33,11 @@ public static class EventExtensions
         };
     }
 
-    public static EventEnvelope ToEventEnvelope(this object @event, StreamPosition position, DateTimeOffset timestamp, EventMetadata? metadata) =>
+    public static EventEnvelope ToEventEnvelope(this object @event, StreamPosition position, StreamPosition globalPosition, DateTimeOffset timestamp, EventMetadata? metadata) =>
         new(
             @event.GetEventId(),
             position,
+            globalPosition,
             timestamp,
             @event,
             metadata);

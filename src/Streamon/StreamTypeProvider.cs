@@ -64,6 +64,6 @@ public class StreamTypeProvider(JsonSerializerOptions serializerOptions) : IStre
     public EventMetadata? ResolveMetadata(string data) =>
         string.IsNullOrWhiteSpace(data) ? null : JsonSerializer.Deserialize<EventMetadata>(data, serializerOptions);
 
-    public string SerializeMetadata(EventMetadata? metadata) =>
-        metadata is null ? string.Empty : JsonSerializer.Serialize(metadata, serializerOptions) ?? throw new StreamTypeProviderException("metadata", typeof(EventMetadata), "The metadata object couldn't be serialized");
+    public string? SerializeMetadata(EventMetadata? metadata) =>
+        metadata is not null ? JsonSerializer.Serialize(metadata, serializerOptions) ?? throw new StreamTypeProviderException("metadata", typeof(EventMetadata), "The metadata object couldn't be serialized") : default;
 }

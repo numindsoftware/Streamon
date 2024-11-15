@@ -26,7 +26,7 @@ internal class StreamEntity : ITableEntity
     /// <summary>
     /// The last event sequence number, updated on each event append
     /// </summary>
-    public long CurrentSequence { get; set; }
+    public long Sequence { get; set; }
     /// <summary>
     /// The global sequence number, updated on each event append for all streams.
     /// In order to calculate the global sequence number, just before saving we query the very last stream and add the new event count.

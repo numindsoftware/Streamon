@@ -5,7 +5,7 @@ namespace Streamon.Azure.CosmosDb.Tests;
 
 internal class ContainerFixture : IAsyncLifetime
 {
-    public ContainerFixture() => TestContainer = new CosmosDbBuilder().Build();
+    public ContainerFixture() => TestContainer = new CosmosDbBuilder().WithName("streamon-cosmosdb").Build();
 
     public async Task DisposeAsync() => await TestContainer.DisposeAsync();
 
