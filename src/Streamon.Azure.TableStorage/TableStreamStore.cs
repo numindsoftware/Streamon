@@ -70,7 +70,7 @@ public class TableStreamStore(TableClient tableClient, IStreamTypeProvider strea
     private async Task<StreamPosition> FetchLatestGlobalPositionAsync(CancellationToken cancellationToken = default)
     {
         List<StreamEntity> entities = [];
-        await foreach (var entity in tableClient.QueryAsync<StreamEntity>(e => e.RowKey == StreamEntity.StreamRowKey, cancellationToken: cancellationToken)) entities.Add(entity);
-        return entities.Count == 0 ? StreamPosition.Start : new(entities.Sum(e => e.CurrentSequence));
+        await foreach (var entity in tableClient.QueryAsync<StreamEntity>(static e => e.RowKey == StreamEntity.StreamRowKey, cancellationToken: cancellationToken)) entities.Add(entity);
+        return entities.Count == 0 ? StreamPosition.Start : new(entities.Sum(static e => e.CurrentSequence));
     }
 }

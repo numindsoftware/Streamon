@@ -20,7 +20,7 @@ public class MemoryStreamStore : IStreamStore
         endPosition = endPosition == default ? StreamPosition.End : endPosition;
         if (!_streams.TryGetValue(streamId, out var existingEvents)) throw new StreamNotFoundException(streamId);
         var eventEnvelopes = existingEvents.Where(e => e.StreamPosition >= startPosition && e.StreamPosition <= endPosition).ToImmutableArray();
-        var globalEventPosition = _streams.SelectMany(s => s.Value).Count();
+        var globalEventPosition = _streams.SelectMany(static s => s.Value).Count();
         return Task.FromResult(new Stream(streamId, eventEnvelopes.AsEnumerable(), GlobalEventPosition));
     }
 

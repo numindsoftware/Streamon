@@ -2,5 +2,5 @@
 
 public interface IHasEventMetadata
 {
-    public EventMetadata Metadata { get; set; }
+    public EventMetadata Metadata { get; }
 }

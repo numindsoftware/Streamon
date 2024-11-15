@@ -32,28 +32,9 @@ internal static class EventExtensions
         return streamEntity;
     }
 
-    //public static IEnumerable<EventEntity> ExtractEventEntities(this IEnumerable<TableEntity> entities)
-    //{
-    //    var eventEntities = entities
-    //        .Where(e => e.RowKey.StartsWith(EventEntity.EventRowKeyPrefix))
-    //        .Select(e => new EventEntity()
-    //        {
-    //            PartitionKey = e.PartitionKey,
-    //            RowKey = e.RowKey,
-    //            Sequence = e.GetInt64Value(nameof(EventEntity.Sequence)),
-    //            CreatedOn = e.GetDateTimeOffsetValue(nameof(EventEntity.CreatedOn)),
-    //            Type = e.GetString(nameof(EventEntity.Type)) ?? string.Empty,
-    //            EventId = e.GetString(nameof(EventEntity.EventId)) ?? string.Empty,
-    //            Data = e.GetString(nameof(EventEntity.Data)) ?? string.Empty,
-    //            Metadata = e.GetString(nameof(EventEntity.Metadata)),
-    //        });
-    //    if (!eventEntities.Any()) throw new InvalidStreamStateException("No events found in stream");
-    //    return eventEntities;
-    //}
-
     public static IEnumerable<EventEnvelope> ToEventEnvelopes(this IEnumerable<TableEntity> eventEntities, IStreamTypeProvider streamTypeProvider) =>
         eventEntities
-            .Where(e => e.RowKey.StartsWith(EventEntity.EventRowKeyPrefix))
+            .Where(static e => e.RowKey.StartsWith(EventEntity.EventRowKeyPrefix))
             .Select(e => new EventEnvelope(
                     new EventId(e.GetString(nameof(EventEntity.EventId))),
                     new StreamPosition(e.GetInt64Value(nameof(EventEntity.Sequence))),
@@ -61,23 +42,9 @@ internal static class EventExtensions
                     streamTypeProvider.ResolveEvent(e.GetString(nameof(EventEntity.Type)), e.GetString(nameof(EventEntity.Data))),
                     streamTypeProvider.ResolveMetadata(e.GetString(nameof(EventEntity.Metadata)))));
 
-    //public static EventEntity ToEventEntity(this TableEntity entity) =>
-    //    new()
-    //    {
-    //        PartitionKey = entity.PartitionKey,
-    //        RowKey = entity.RowKey,
-    //        Sequence = entity.GetInt64Value(nameof(EventEntity.Sequence)),
-    //        CreatedOn = entity.GetDateTimeOffsetValue(nameof(EventEntity.CreatedOn)),
-    //        Type = entity.GetString(nameof(EventEntity.Type)) ?? string.Empty,
-    //        EventId = entity.GetString(nameof(EventEntity.EventId)) ?? string.Empty,
-    //        Data = entity.GetString(nameof(EventEntity.Data)) ?? string.Empty,
-    //        Metadata = entity.GetString(nameof(EventEntity.Metadata)),
-    //    };
-
     public static ITableEntity ToEventEntity(this object @event, StreamId streamId, StreamPosition position, EventMetadata? metadata, IStreamTypeProvider streamTypeProvider)
     {
         var eventTypeInfo = streamTypeProvider.SerializeEvent(@event);
-        var eventMetadata = @event is IHasEventMetadata eventWithMetadata ? (eventWithMetadata.Metadata ?? metadata) : metadata;
         return new EventEntity
         {
             PartitionKey = streamId.Value,
@@ -86,7 +53,7 @@ internal static class EventExtensions
             EventId = @event.GetEventId().Value,
             Data = eventTypeInfo.Data,
             Type = eventTypeInfo.Type,
-            Metadata = streamTypeProvider.SerializeMetadata(eventMetadata),
+            Metadata = streamTypeProvider.SerializeMetadata(@event.GetEventMetadata(metadata)),
             CreatedOn = DateTimeOffset.UtcNow,
         };
     }

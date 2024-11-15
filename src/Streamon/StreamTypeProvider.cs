@@ -16,35 +16,39 @@ public class StreamTypeProvider(JsonSerializerOptions serializerOptions) : IStre
         return this;
     }
 
-    public StreamTypeProvider RegisterTypes(Assembly assembly)
+    public StreamTypeProvider RegisterTypes(IEnumerable<Assembly> assemblies)
     {
-        _registeredAssemblies.Add(assembly);
-        assembly.GetTypes()
-            .Select(t => new { Type = t, Attribute = t.GetCustomAttribute<EventTypeAttribute>() })
-            .Where(t => t.Attribute?.Name is not null)
-            .ToList()
-            .ForEach(t => RegisterType(t.Attribute!.Name, t.Type));
+        foreach (var assembly in assemblies)
+        {
+            _registeredAssemblies.Add(assembly);
+            assembly.GetTypes()
+                .Select(static t => new { Type = t, Attribute = t.GetCustomAttribute<EventTypeAttribute>() })
+                .Where(static t => t.Attribute?.Name is not null)
+                .ToList()
+                .ForEach(t => RegisterType(t.Attribute!.Name, t.Type));
+        }
         return this;
     }
 
     public StreamTypeProvider RegisterTypes(params Type[] types)
     {
-        foreach (var type in types) RegisterTypes(type.Assembly);
+        foreach (var type in types) RegisterTypes([type.Assembly]);
         return this;
     }
 
-    public StreamTypeProvider RegisterTypes<T>() => RegisterTypes(typeof(T).Assembly);
+    public StreamTypeProvider RegisterTypes<T>() => RegisterTypes([typeof(T).Assembly]);
 
     public object ResolveEvent(string name, string data)
     {
-        if (_eventTypesRegistry.TryGetValue(name, out var eventType)) return eventType;
+        if (!_eventTypesRegistry.TryGetValue(name, out var eventType))
+        {
+            var types = _registeredAssemblies
+                .SelectMany(static a => a.GetTypes())
+                .Where(t => !t.IsAbstract && !t.IsEnum && !t.IsInterface && t.Name == name);
+            if (!types.Any() || types.Count() > 1) throw new EventTypeNotFoundException(name);
 
-        var types = _registeredAssemblies
-            .SelectMany(a => a.GetTypes())
-            .Where(t => !t.IsAbstract && !t.IsEnum && !t.IsInterface && t.Name == name);
-        if (!types.Any() || types.Count() > 1) throw new EventTypeNotFoundException(name);
-
-        _eventTypesRegistry[name] = eventType = types.Single();
+            _eventTypesRegistry[name] = eventType = types.Single();
+        }
         return JsonSerializer.Deserialize(data, eventType, serializerOptions) ?? throw new StreamTypeProviderException(name, eventType, $"The event data couldn't be deserialized to type {eventType}");
     }
 

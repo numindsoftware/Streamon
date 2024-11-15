@@ -4,7 +4,7 @@ public class EventMetadata : Dictionary<string, string>
 {
     public EventMetadata() { }
 
-    public EventMetadata(IEnumerable<KeyValuePair<string, string>> keyValuePairs) : base(keyValuePairs.ToDictionary(kv => kv.Key, kv => kv.Value)) { }
+    public EventMetadata(IEnumerable<KeyValuePair<string, string>> keyValuePairs) : base(keyValuePairs.ToDictionary(static kv => kv.Key, static kv => kv.Value)) { }
 
     public EventMetadata(params KeyValuePair<string, string>[] keyValuePairs) : this(keyValuePairs.AsEnumerable()) { }
 
@@ -15,7 +15,7 @@ public class EventMetadata : Dictionary<string, string>
         foreach (var kv in keyValuePairs) Add(kv.Key, kv.Value);
     }
 
-    public override string ToString() => string.Join(Environment.NewLine, this.Select(kv => $"{kv.Key}: {kv.Value}"));
+    public override string ToString() => string.Join(Environment.NewLine, this.Select(static kv => $"{kv.Key}: {kv.Value}"));
 
     public string GetMetadataValue(string key) => GetMetadataValue(key, s => s);
 

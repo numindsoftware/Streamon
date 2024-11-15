@@ -2,5 +2,5 @@
 
 public interface IHasEventId
 {
-    public EventId EventId { get; set; }
+    public EventId EventId { get; }
 }

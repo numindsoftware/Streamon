@@ -1,5 +1,4 @@
 ﻿using System.Reflection;
-using System.Text.Json;
 
 namespace Streamon;
 
@@ -14,7 +13,7 @@ public static class EventExtensions
         {
             eventIdMember = @event.GetType()
                 .GetMembers(BindingFlags.Instance)
-                .Where(mi => mi.GetCustomAttribute<EventIdAttribute>() != null)
+                .Where(static mi => mi.GetCustomAttribute<EventIdAttribute>() != null)
                 .FirstOrDefault();
             if (eventIdMember is not null)
             {
@@ -34,16 +33,14 @@ public static class EventExtensions
         };
     }
 
-    //public static string GetEventType(this object @event) =>
-    //    @event.GetType().GetCustomAttribute<EventTypeAttribute>()?.Name ?? @event.GetType().Name;
-
-    public static EventEnvelope ToEventEnvelope(this object @event, StreamPosition position, DateTimeOffset timestamp, EventMetadata? metadata)
-    {
-        return new(
+    public static EventEnvelope ToEventEnvelope(this object @event, StreamPosition position, DateTimeOffset timestamp, EventMetadata? metadata) =>
+        new(
             @event.GetEventId(),
             position,
             timestamp,
             @event,
             metadata);
-    }
+
+    public static EventMetadata? GetEventMetadata(this object @event, EventMetadata? defaultValue = default) =>
+        (@event is IHasEventMetadata identifiable ? identifiable.Metadata : defaultValue) ?? defaultValue;
 }

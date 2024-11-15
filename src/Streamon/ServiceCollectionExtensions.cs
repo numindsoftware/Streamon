@@ -10,6 +10,6 @@ public static class ServiceCollectionExtensions
 {
     public static StreamProvisionerBuilder AddStreamon(this IServiceCollection services)
     {
-        return new StreamProvisionerBuilder(services);
+        return new StreamProvisionerBuilder(services).AddStreamTypeProvider();
     }
 }

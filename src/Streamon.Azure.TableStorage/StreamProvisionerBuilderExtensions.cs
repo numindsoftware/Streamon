@@ -9,7 +9,7 @@ public static class StreamProvisionerBuilderExtensions
     {
         if (options is not null)
         {
-            builder.ProvisionerBuilder = sp => ActivatorUtilities.CreateInstance<TableStreamStoreProvisioner>(sp, tableServiceClient, options);
+            builder.ProvisionerBuilder = sp => ActivatorUtilities.CreateInstance<TableStreamStoreProvisioner>(sp, tableServiceClient, options, options);
         }
         else
         {
@@ -18,5 +18,5 @@ public static class StreamProvisionerBuilderExtensions
         return builder;
     }
     public static StreamProvisionerBuilder AddTableStorageEventStore(this StreamProvisionerBuilder builder, string connectionString, TableStreamStoreOptions? options = default)
-        => builder.AddTableStorageEventStore(new TableServiceClient(connectionString), options);
+        => builder.AddTableStorageEventStore(new TableServiceClient(connectionString), options).AddStreamTypeProvider();
 }
