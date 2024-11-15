@@ -8,4 +8,6 @@ public interface IStreamWriter
         IEnumerable<object> events,
         EventMetadata? metadata = default,
         CancellationToken cancellationToken = default);
+
+    public event EventHandler<StreamEventArgs>? EventsAppended;
 }

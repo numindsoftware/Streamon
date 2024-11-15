@@ -32,4 +32,12 @@ public class TableStreamStoreOptions(IStreamTypeProvider streamTypeProvider)
     /// Thre prefix to use in the RowKey colums for snapshot entities. Defaults to "SO-SNAP-".
     /// </summary>
     public string SnapshotEntityPrefix { get; set; } = "SO-SNAP-";
+    /// <summary>
+    /// Set a delegate to be called when events are appended to a stream.
+    /// </summary>
+    public Action<Stream> OnEventsAppended { get; set; } = _ => { };
+    /// <summary>
+    /// Set a delegate to be called when a stream is deleted.
+    /// </summary>
+    public Action<StreamId> OnStreamDeleted { get; set; } = _ => { };
 }

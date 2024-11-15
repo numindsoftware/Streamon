@@ -6,12 +6,16 @@ public class MemoryStreamStore : IStreamStore
 {
     private readonly Dictionary<StreamId, List<EventEnvelope>> _streams = [];
 
+    public event EventHandler<StreamEventArgs>? EventsAppended;
+    public event EventHandler<StreamIdEventArgs>? StreamDeleted;
+
     public Task DeleteStreamAsync(StreamId streamId, StreamPosition expectedSequence, CancellationToken cancellationToken = default)
     {
         if (!_streams.TryGetValue(streamId, out var events)) throw new StreamNotFoundException(streamId);
         var actualSequence = events.Last().StreamPosition;
         if (actualSequence != expectedSequence) throw new StreamConcurrencyException(expectedSequence, actualSequence);
         _streams.Remove(streamId);
+        OnStreamDeleted(streamId);
         return Task.CompletedTask;
     }
 
@@ -32,7 +36,9 @@ public class MemoryStreamStore : IStreamStore
             {
                 var newEvents = ConvertToEnvelopes(StreamPosition.Start, GlobalEventPosition, events, metadata);
                 _streams.Add(streamId, [.. newEvents]);
-                return Task.FromResult(new Stream(streamId, GlobalEventPosition, newEvents.ToImmutableArray()));
+                var stream = new Stream(streamId, GlobalEventPosition, newEvents.ToImmutableArray());
+                OnEventsAppended(stream);
+                return Task.FromResult(stream);
             }
             else throw new StreamNotFoundException(streamId);
         }
@@ -47,6 +53,9 @@ public class MemoryStreamStore : IStreamStore
             return Task.FromResult(new Stream(streamId, GlobalEventPosition, [.. newEvents]));
         }
     }
+
+    protected virtual void OnEventsAppended(Stream stream) => EventsAppended?.Invoke(this, new(stream));
+    protected virtual void OnStreamDeleted(StreamId streamId) => StreamDeleted?.Invoke(this, new(streamId));
 
     private static EventMetadata? ExtractMetadata(object @event) =>
         @event is IHasEventMetadata metadata ? metadata.Metadata : default;

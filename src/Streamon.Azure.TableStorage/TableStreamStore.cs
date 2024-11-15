@@ -1,11 +1,15 @@
 ﻿using Azure;
 using Azure.Data.Tables;
 using Azure.Data.Tables.Models;
+using System.IO;
 
 namespace Streamon.Azure.TableStorage;
 
 public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions options) : IStreamStore
 {
+    public event EventHandler<StreamEventArgs>? EventsAppended;
+    public event EventHandler<StreamIdEventArgs>? StreamDeleted;
+
     public async Task<Stream> FetchAsync(StreamId streamId, StreamPosition startPosition = default, StreamPosition endPosition = default, CancellationToken cancellationToken = default)
     {
         endPosition = endPosition == default ? StreamPosition.End : endPosition;
@@ -80,6 +84,17 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
             var deleteResponse = await tableClient.UpdateEntityAsync(streamEntity, streamEntity.ETag, cancellationToken: cancellationToken).ConfigureAwait(false);
             deleteResponse.ThrowOnError($"Failed to soft delete stream with status code {deleteResponse.Status}");
         }
+    }
+
+    protected virtual void OnEventsAppended(Stream stream)
+    {
+        options.OnEventsAppended?.Invoke(stream);
+        EventsAppended?.Invoke(this, new(stream));
+    }
+    protected virtual void OnStreamDeleted(StreamId streamId)
+    {
+        options.OnStreamDeleted?.Invoke(streamId);
+        StreamDeleted?.Invoke(this, new(streamId));
     }
 
     private async Task<StreamPosition> FetchLatestGlobalPositionAsync(CancellationToken cancellationToken = default)

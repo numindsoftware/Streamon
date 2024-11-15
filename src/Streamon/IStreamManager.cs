@@ -6,4 +6,6 @@ public interface IStreamManager
         StreamId streamId,
         StreamPosition expectedSequence,
         CancellationToken cancellationToken = default);
+
+    public event EventHandler<StreamIdEventArgs>? StreamDeleted;
 }
