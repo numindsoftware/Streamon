@@ -5,7 +5,8 @@ namespace Streamon.Azure.TableStorage;
 
 internal class SnapshotEntity : ITableEntity
 {
-    public const string EventIdRowKeyFormat = "SO-SNAP-{0}";
+    public const string SnapshotRowKeyPrefix = "SO-SNAP-";
+    public const string EventIdRowKeyFormat = SnapshotRowKeyPrefix + "{0}";
 
     /// <summary>
     /// The stream identifier

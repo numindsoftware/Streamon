@@ -1,11 +1,28 @@
-﻿using Streamon.Tests.Fixtures;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Streamon.Tests.Fixtures;
 using System.Text.Json;
 
 namespace Streamon.Azure.TableStorage.Tests;
 
 public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassFixture<ContainerFixture>
 {
-    private readonly TableStreamStoreProvisioner _provisioner = new(containerFixture.TableServiceClient!, new StreamTypeProvider(new(JsonSerializerDefaults.Web)), new TableStreamStoreOptions() { TransactionBatchSize = 5 });
+    private readonly TableStreamStoreProvisioner _provisioner = new(
+        containerFixture.TableServiceClient!, 
+        new (new StreamTypeProvider(new(JsonSerializerDefaults.Web))));
+
+    [Fact]
+    public async Task CreateStoreThroughServiceCollection()
+    {
+        var services = new ServiceCollection();
+        services.AddStreamon().AddTableStorageEventStore(containerFixture.TestContainer.GetConnectionString());
+        var provider = services.BuildServiceProvider();
+
+        var provisioner = provider.GetRequiredService<IStreamStoreProvisioner>();
+        var store = await provisioner.CreateStoreAsync("TestCreated");
+        var stream = await store.AppendAsync(new StreamId("order-123"), StreamPosition.Start, [OrderEvents.OrderCaptured]);
+        Assert.NotEmpty(stream);
+        Assert.NotEqual(stream.First().EventId, default);
+    }
 
     [Fact]
     public async Task AppendsEventsToNewStream()
@@ -54,9 +71,7 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
             new TestEvent2("3"),
             new TestEvent1("2") // this should fail
         ];
-        var stream = await store.AppendAsync(new StreamId("order-125"), StreamPosition.Start, events);
-        Assert.NotEmpty(stream);
-        Assert.Equal(events.Count(), stream.Count());
+        await Assert.ThrowsAsync<DuplicateEventException>(() => store.AppendAsync(new StreamId("order-125"), StreamPosition.Start, events));
     }
 
     public record TestEvent1([property: EventId] string Id);

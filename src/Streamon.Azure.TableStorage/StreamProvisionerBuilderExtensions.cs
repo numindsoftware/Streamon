@@ -1,5 +1,6 @@
 ﻿using Azure.Data.Tables;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Streamon.Azure.TableStorage;
 
@@ -7,14 +8,11 @@ public static class StreamProvisionerBuilderExtensions
 {
     public static StreamProvisionerBuilder AddTableStorageEventStore(this StreamProvisionerBuilder builder, TableServiceClient tableServiceClient, TableStreamStoreOptions? options = default)
     {
-        if (options is not null)
+        builder.ProvisionerBuilder = sp =>
         {
-            builder.ProvisionerBuilder = sp => ActivatorUtilities.CreateInstance<TableStreamStoreProvisioner>(sp, tableServiceClient, options, options);
-        }
-        else
-        {
-            builder.ProvisionerBuilder = sp => ActivatorUtilities.CreateInstance<TableStreamStoreProvisioner>(sp, tableServiceClient);
-        }
+            options ??= new TableStreamStoreOptions(sp.GetRequiredService<IStreamTypeProvider>());
+            return ActivatorUtilities.CreateInstance<TableStreamStoreProvisioner>(sp, tableServiceClient, options);
+        };
         return builder;
     }
     public static StreamProvisionerBuilder AddTableStorageEventStore(this StreamProvisionerBuilder builder, string connectionString, TableStreamStoreOptions? options = default)

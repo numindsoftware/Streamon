@@ -5,9 +5,6 @@ namespace Streamon.Azure.TableStorage;
 
 internal class EventEntity : ITableEntity
 {
-    public const string EventRowKeyPrefix = "SO-EVENT-";
-    public const string EventRowKeyFormat = EventRowKeyPrefix + "{0:000000000000000000}";
-
     /// <summary>
     /// Stream Identifier
     /// </summary>

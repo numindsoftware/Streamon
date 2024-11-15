@@ -5,8 +5,6 @@ namespace Streamon.Azure.TableStorage;
 
 internal class StreamEntity : ITableEntity
 {
-    public const string StreamRowKey = "SO-STREAM";
-
     /// <summary>
     /// StreamId
     /// </summary>
@@ -14,7 +12,7 @@ internal class StreamEntity : ITableEntity
     /// <summary>
     /// Fixed to SO-STREAM value, used to identify the stream entity which helps with concurrency control
     /// </summary>
-    public string RowKey { get; set; } = StreamRowKey;
+    public required string RowKey { get; set; }
     /// <summary>
     /// Managed by Azure Table Storage, usually indicates the last time the row was accessed or modified
     /// </summary>
