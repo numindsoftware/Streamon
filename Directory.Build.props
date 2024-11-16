@@ -1,9 +1,15 @@
 <Project>
-  <PropertyGroup>
-    <!-- Compilaton -->
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-  </PropertyGroup>
+
+	<PropertyGroup>
+		<!-- Compilaton -->
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+		<Copyright>Copyright (c) Numind Software 2024</Copyright>
+		<Authors>Numind Software, Bryan G</Authors>
+		<Company>Numind Software</Company>
+	</PropertyGroup>
+
 </Project>

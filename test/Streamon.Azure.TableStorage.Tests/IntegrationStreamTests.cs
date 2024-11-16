@@ -4,13 +4,10 @@ using System.Text.Json;
 
 namespace Streamon.Azure.TableStorage.Tests;
 
+[TestCaseOrderer("Streamon.Tests.Fixtures.PriorityTestCollectionOrderer", "Streamon.Tests.Fixtures")]
 public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassFixture<ContainerFixture>
 {
-    private readonly TableStreamStoreProvisioner _provisioner = new(
-        containerFixture.TableServiceClient!, 
-        new (new StreamTypeProvider(new(JsonSerializerDefaults.Web))));
-
-    [Fact]
+    [Fact, Priority(1)]
     public async Task CreateStoreThroughServiceCollection()
     {
         var services = new ServiceCollection();
@@ -24,10 +21,10 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
         Assert.NotEqual(stream.First().EventId, default);
     }
 
-    [Fact]
+    [Fact, Priority(2)]
     public async Task AppendsEventsToNewStream()
     {
-        var store = await _provisioner.CreateStoreAsync(nameof(IntegrationStreamTests));
+        var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync(nameof(IntegrationStreamTests));
         IEnumerable<object> events = 
         [
             OrderEvents.OrderCaptured,
@@ -39,10 +36,10 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
         Assert.Equal(events.Count(), stream.Count());
     }
 
-    [Fact]
+    [Fact, Priority(3)]
     public async Task AppendBatchedEventsToNewStream()
     {
-        var store = await _provisioner.CreateStoreAsync(nameof(IntegrationStreamTests));
+        var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync(nameof(IntegrationStreamTests));
         IEnumerable<object> events =
         [
             OrderEvents.OrderCaptured,
@@ -60,10 +57,10 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
         Assert.Equal(events.Count(), stream.Count());
     }
 
-    [Fact]
+    [Fact, Priority(5)]
     public async Task FailsWhenAddingDuplicateEvents()
     {
-        var store = await _provisioner.CreateStoreAsync(nameof(IntegrationStreamTests));
+        var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync(nameof(IntegrationStreamTests));
         IEnumerable<object> events =
         [
             new TestEvent1("1"),
@@ -72,6 +69,15 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
             new TestEvent1("2") // this should fail
         ];
         await Assert.ThrowsAsync<DuplicateEventException>(() => store.AppendAsync(new StreamId("order-125"), StreamPosition.Start, events));
+    }
+
+    [Fact, Priority(6)]
+    public async Task ReadsFullStreamFromStoreEvents()
+    {
+        var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync(nameof(IntegrationStreamTests));
+        var readStream = await store.FetchAsync(new StreamId("order-124"));
+        Assert.NotEmpty(readStream);
+        Assert.Equal(9, readStream.Count());
     }
 
     public record TestEvent1([property: EventId] string Id);

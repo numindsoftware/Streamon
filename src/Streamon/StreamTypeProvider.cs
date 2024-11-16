@@ -3,11 +3,19 @@ using System.Text.Json;
 
 namespace Streamon;
 
-public class StreamTypeProvider(JsonSerializerOptions serializerOptions) : IStreamTypeProvider
+public class StreamTypeProvider : IStreamTypeProvider
 {
+
     private readonly List<Assembly> _registeredAssemblies = [];
     private readonly Dictionary<string, Type> _eventTypesRegistry = [];
-    
+    private readonly JsonSerializerOptions _serializerOptions;
+
+    public StreamTypeProvider(JsonSerializerOptions serializerOptions)
+    {
+        _serializerOptions = serializerOptions;
+        RegisterTypes([Assembly.GetEntryAssembly()!, Assembly.GetExecutingAssembly(), Assembly.GetCallingAssembly()]);
+    }
+
     public StreamTypeProvider RegisterType<T>(string name) => RegisterType(name, typeof(T));
 
     public StreamTypeProvider RegisterType(string name, Type eventType)
@@ -20,6 +28,7 @@ public class StreamTypeProvider(JsonSerializerOptions serializerOptions) : IStre
     {
         foreach (var assembly in assemblies)
         {
+            if (_registeredAssemblies.Contains(assembly)) continue;
             _registeredAssemblies.Add(assembly);
             assembly.GetTypes()
                 .Select(static t => new { Type = t, Attribute = t.GetCustomAttribute<EventTypeAttribute>() })
@@ -49,7 +58,7 @@ public class StreamTypeProvider(JsonSerializerOptions serializerOptions) : IStre
 
             _eventTypesRegistry[name] = eventType = types.Single();
         }
-        return JsonSerializer.Deserialize(data, eventType, serializerOptions) ?? throw new StreamTypeProviderException(name, eventType, $"The event data couldn't be deserialized to type {eventType}");
+        return JsonSerializer.Deserialize(data, eventType, _serializerOptions) ?? throw new StreamTypeProviderException(name, eventType, $"The event data couldn't be deserialized to type {eventType}");
     }
 
     public EventTypeInfo SerializeEvent(object @event)
@@ -57,13 +66,13 @@ public class StreamTypeProvider(JsonSerializerOptions serializerOptions) : IStre
         var eventType = @event.GetType();
         var eventTypeName = eventType.GetCustomAttribute<EventTypeAttribute>()?.Name ?? @event.GetType().Name;
         RegisterType(eventTypeName, eventType);
-        var eventData = JsonSerializer.Serialize(@event, serializerOptions) ?? throw new StreamTypeProviderException(eventTypeName, eventType, $"The event object counldn't be serialized from type {eventType}");
+        var eventData = JsonSerializer.Serialize(@event, _serializerOptions) ?? throw new StreamTypeProviderException(eventTypeName, eventType, $"The event object counldn't be serialized from type {eventType}");
         return new(eventTypeName, eventData);
     }
 
-    public EventMetadata? ResolveMetadata(string data) =>
-        string.IsNullOrWhiteSpace(data) ? null : JsonSerializer.Deserialize<EventMetadata>(data, serializerOptions);
+    public EventMetadata? ResolveMetadata(string? data) =>
+        string.IsNullOrWhiteSpace(data) ? null : JsonSerializer.Deserialize<EventMetadata>(data, _serializerOptions);
 
     public string? SerializeMetadata(EventMetadata? metadata) =>
-        metadata is not null ? JsonSerializer.Serialize(metadata, serializerOptions) ?? throw new StreamTypeProviderException("metadata", typeof(EventMetadata), "The metadata object couldn't be serialized") : default;
+        metadata is not null ? JsonSerializer.Serialize(metadata, _serializerOptions) ?? throw new StreamTypeProviderException("metadata", typeof(EventMetadata), "The metadata object couldn't be serialized") : default;
 }

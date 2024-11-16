@@ -1,0 +1,20 @@
+on:
+  release:
+    types:
+      - published    # Run the workflow when a new GitHub release is published
+  push:
+    tags:
+    - "v[0-9]+.[0-9]+.[0-9]+--preview"
+
+jobs:
+  build:  
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0 # Get all history to allow automatic versioning using MinVer
+
+    # Install the .NET SDK indicated in the global.json file
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+  

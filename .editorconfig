@@ -86,3 +86,8 @@ csharp_style_throw_expression = true:suggestion
 csharp_style_prefer_null_check_over_type_check = true:suggestion
 csharp_prefer_simple_default_expression = true:suggestion
 csharp_style_prefer_primary_constructors = true:suggestion
+
+[*.{xml,csproj,props,yml,js,ts,json}]
+tab_width = 2
+indent_size = 2
+end_of_line = lf

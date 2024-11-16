@@ -4,4 +4,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="xunit.core" Version="2.9.2" />
+  </ItemGroup>
+
 </Project>

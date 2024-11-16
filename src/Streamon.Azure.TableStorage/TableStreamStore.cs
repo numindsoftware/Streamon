@@ -1,7 +1,6 @@
 ﻿using Azure;
 using Azure.Data.Tables;
 using Azure.Data.Tables.Models;
-using System.IO;
 
 namespace Streamon.Azure.TableStorage;
 
@@ -12,16 +11,21 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
 
     public async Task<Stream> FetchAsync(StreamId streamId, StreamPosition startPosition = default, StreamPosition endPosition = default, CancellationToken cancellationToken = default)
     {
+        startPosition = startPosition == default ? StreamPosition.Start : startPosition;
         endPosition = endPosition == default ? StreamPosition.End : endPosition;
         
-        List<TableEntity> entities = [];
-        await foreach(var entity in tableClient.QueryAsync<TableEntity>(e => e.PartitionKey == streamId.Value && !e.RowKey.StartsWith(options.EventIdEntityRowKeyPrefix), cancellationToken: cancellationToken)) entities.Add(entity);
-        
-        if (entities.Count == 0) throw new StreamNotFoundException(streamId);
-        var streamEntity = entities.ExtractStreamEntity(options);
-        var eventEnvelopes = entities.ToEventEnvelopes(options.StreamTypeProvider, options);
+        var streamEntityResponse = await tableClient.GetEntityIfExistsAsync<StreamEntity>(streamId.Value, options.StreamEntityRowKey, cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (!streamEntityResponse.HasValue) throw new StreamNotFoundException(streamId);
 
-        return new Stream(streamId, new(streamEntity.Sequence), [.. eventEnvelopes]);
+        List<EventEntity> entities = [];
+        // using plain odata filtering to only get event entities, this odata implementation does not support 'startsWith' operators so we use a range query trick as explained in:
+        // https://learn.microsoft.com/en-us/rest/api/storageservices/querying-tables-and-entities
+        var eventsQuery = $"PartitionKey eq '{streamId.Value}' and RowKey ge '{options.EventEntityRowKeyPrefix}0' and RowKey le '{options.EventEntityRowKeyPrefix}9' and Sequence ge {startPosition} and Sequence le {endPosition}";
+        await foreach (var entity in tableClient.QueryAsync<EventEntity>(eventsQuery, cancellationToken: cancellationToken)) entities.Add(entity);
+        if (entities.Count == 0) throw new StreamNotFoundException(streamId);
+        
+        var eventEnvelopes = entities.ToEventEnvelopes(options);
+        return new Stream(streamId, new(streamEntityResponse.Value!.Sequence), [.. eventEnvelopes]);
     }
 
     public async Task<Stream> AppendAsync(StreamId streamId, StreamPosition expectedPosition, IEnumerable<object> events, EventMetadata? metadata = null, CancellationToken cancellationToken = default)

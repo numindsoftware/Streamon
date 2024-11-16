@@ -2,13 +2,10 @@
 
 Event streaming store platform for real-time data processing and analytics.
 
-Inspired by 
-
-
 ## Providers
 * In Memory
 * [Azure Table Storage](https://learn.microsoft.com/en-us/azure/storage/tables/table-storage-overview)
-* [Azure Cosmos DB](https://developer.azurecosmosdb.com/tools)
+* [Azure Cosmos DB](https://developer.azurecosmosdb.com/tools) (_in progress_)
 
 ## Features
  
