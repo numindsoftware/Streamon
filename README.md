@@ -10,12 +10,12 @@ Event streaming store platform for real-time data processing and analytics.
 ## Features
 
 * POCO events, no base classes or inheritance required
-* Event ids and Metadata detectiom by using both Attribute and Interface markers
-* Customizable serialization and Type resolution
-* Flexible Stream sorage naming and paritioning, e.g. allowing for multitenancy by using one stream per tenant
-* Optimistic Concurrency Control.
-* Soft and Hard Deletion.
-* Global event positioning.
+* Event ids and Metadata detection by using both Attribute and Interface markers
+* Customizable serialization and type resolution
+* Flexible stream sorage naming and partitioning, e.g. allowing for multitenancy by using one stream per tenant
+* Optimistic concurrency control
+* Soft and hard deletion modes
+* Global event positioning
 
 ## To Do's
 
@@ -40,6 +40,23 @@ and
 Icon:
 
 [Pipe icons created by srip - Flaticon](https://www.flaticon.com/free-icons/pipe)
+
+## Dependencies
+
+* [CosmosDb Azure SDK](https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/quickstart-dotnet) CosmosDb provider
+* [Azure Storage SDK](https://learn.microsoft.com/en-us/azure/storage/) Azure Table Storage provider
+* [xUnit](https://xunit.net/) for unit testing
+* [Act](https://github.com/nektos/act) for local testing of Github Actions
+* [Ulid](https://github.com/Cysharp/Ulid) for unique identifiers generation
+* [Test Containers for .NET](https://testcontainers.com/guides/getting-started-with-testcontainers-for-dotnet/) for integration testing
+
+## Continuous Integration & Deployment
+
+The project is built and tested using GitHub Actions. The build artifacts are published to GitHub Packages.
+
+Github actions are configured to publish the packages to GitHub Packages on every push to the `master` branch.
+
+Local testing and development of Github actions can be done using the [`act`](https://github.com/nektos/act) tool. 
 
 ## License
 

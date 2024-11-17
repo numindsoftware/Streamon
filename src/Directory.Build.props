@@ -1,32 +1,32 @@
 <Project>
 
-  <Import Project="$(SolutionDir)Directory.Build.props" />
+	<Import Project="$(SolutionDir)Directory.Build.props" />
 
-  <PropertyGroup>
-    <!-- Package Information -->
-    <Product>Streamon</Product>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <RepositoryUrl>https://github.com/numindsoftware/Streamon</RepositoryUrl>
-    <PackageTags>es eventsourcing eventstore event-sourcing event-store event azure stream storage cosmosdb</PackageTags>
-    <PackageIcon>icon.png</PackageIcon>
-	<IncludeContentInPack>true</IncludeContentInPack>
-	<Description>Event streaming store platform for real-time data processing and analytics.</Description>
-    
-    <!-- Licensing -->
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
-    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    	  
-    <!-- Build and Debugging -->
-    <IncludeSymbols>True</IncludeSymbols>
-    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
-    <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <EmbedUntrackedSources>true</EmbedUntrackedSources>
-  </PropertyGroup>
+	<PropertyGroup>
+		<!-- Package Information -->
+		<Product>Streamon</Product>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<RepositoryUrl>https://github.com/numindsoftware/Streamon</RepositoryUrl>
+		<PackageTags>es eventsourcing eventstore event-sourcing event-store event azure stream storage cosmosdb</PackageTags>
+		<PackageIcon>icon.png</PackageIcon>
+		<IncludeContentInPack>true</IncludeContentInPack>
+		<Description>Event streaming store platform for real-time data processing and analytics.</Description>
 
-  <ItemGroup>
-    <None Include="$(SolutionDir)LICENSE" Pack="true" PackagePath="" />
-    <None Include="$(SolutionDir)icon.png" Pack="true" PackagePath="" />
-    <None Include="$(SolutionDir)README.md" Pack="true" PackagePath="" />
-  </ItemGroup>
-	
+		<!-- Licensing -->
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
+		<PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+
+		<!-- Build and Debugging -->
+		<IncludeSymbols>True</IncludeSymbols>
+		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<EmbedUntrackedSources>true</EmbedUntrackedSources>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="$(SolutionDir)LICENSE" Pack="true" PackagePath="" />
+		<None Include="$(SolutionDir)icon.png" Pack="true" PackagePath="" />
+		<None Include="$(SolutionDir)README.md" Pack="true" PackagePath="" />
+	</ItemGroup>
+
 </Project>
