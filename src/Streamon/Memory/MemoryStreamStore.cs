@@ -9,14 +9,14 @@ public class MemoryStreamStore : IStreamStore
     public event EventHandler<StreamEventArgs>? EventsAppended;
     public event EventHandler<StreamIdEventArgs>? StreamDeleted;
 
-    public Task DeleteStreamAsync(StreamId streamId, StreamPosition expectedSequence, CancellationToken cancellationToken = default)
+    public Task<long> DeleteStreamAsync(StreamId streamId, StreamPosition expectedSequence, CancellationToken cancellationToken = default)
     {
         if (!_streams.TryGetValue(streamId, out var events)) throw new StreamNotFoundException(streamId);
         var actualSequence = events.Last().StreamPosition;
         if (actualSequence != expectedSequence) throw new StreamConcurrencyException(expectedSequence, actualSequence);
         _streams.Remove(streamId);
         OnStreamDeleted(streamId);
-        return Task.CompletedTask;
+        return Task.FromResult<long>(events.Count);
     }
 
     public Task<Stream> FetchAsync(StreamId streamId, StreamPosition startPosition = default, StreamPosition endPosition = default, CancellationToken cancellationToken = default)
@@ -61,7 +61,7 @@ public class MemoryStreamStore : IStreamStore
         @event is IHasEventMetadata metadata ? metadata.Metadata : default;
 
     private static IEnumerable<EventEnvelope> ConvertToEnvelopes(StreamPosition startingSequence, StreamPosition globalPosition, IEnumerable<object> events, EventMetadata? metadata) =>
-        events.Select((e, i) => new EventEnvelope(EventId.New(), new(startingSequence.Value + i), new(globalPosition.Value + i), DateTimeOffset.Now, e, metadata ?? ExtractMetadata(e)));
+        events.Select((e, i) => new EventEnvelope(EventId.New(), StreamPosition.From(startingSequence.Value + i), StreamPosition.From(globalPosition.Value + i), DateTimeOffset.Now, e, metadata ?? ExtractMetadata(e)));
 
-    private StreamPosition GlobalEventPosition { get => new(Math.Max(_streams.SelectMany(s => s.Value).Count() - 1, 0)); }
+    private StreamPosition GlobalEventPosition { get => StreamPosition.From(Math.Max(_streams.SelectMany(s => s.Value).Count() - 1, 0)); }
 }

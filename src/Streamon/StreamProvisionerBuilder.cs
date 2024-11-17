@@ -11,7 +11,7 @@ public class StreamProvisionerBuilder
     public StreamProvisionerBuilder(IServiceCollection services)
     {
         Services = services;
-        services.AddTransient(sp => (ProvisionerBuilder ?? throw new InvalidOperationException("No store provisioner has been registered"))(sp));
+        services.AddScoped(sp => (ProvisionerBuilder ?? throw new InvalidOperationException("No store provisioner has been registered"))(sp));
         services.AddSingleton(sp => (StreamTypeProviderBuilder ?? throw new InvalidOperationException("No stream type provider has been registered"))(sp));
     }
 

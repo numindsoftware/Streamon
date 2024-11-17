@@ -11,7 +11,6 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
 
     public async Task<Stream> FetchAsync(StreamId streamId, StreamPosition startPosition = default, StreamPosition endPosition = default, CancellationToken cancellationToken = default)
     {
-        startPosition = startPosition == default ? StreamPosition.Start : startPosition;
         endPosition = endPosition == default ? StreamPosition.End : endPosition;
         
         var streamEntityResponse = await tableClient.GetEntityIfExistsAsync<StreamEntity>(streamId.Value, options.StreamEntityRowKey, cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -25,16 +24,18 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
         if (entities.Count == 0) throw new StreamNotFoundException(streamId);
         
         var eventEnvelopes = entities.ToEventEnvelopes(options);
-        return new Stream(streamId, new(streamEntityResponse.Value!.Sequence), [.. eventEnvelopes]);
+        return new Stream(streamId, StreamPosition.From(streamEntityResponse.Value!.Sequence), [.. eventEnvelopes]);
     }
 
     public async Task<Stream> AppendAsync(StreamId streamId, StreamPosition expectedPosition, IEnumerable<object> events, EventMetadata? metadata = null, CancellationToken cancellationToken = default)
     {
+        if (expectedPosition == StreamPosition.End) throw new StreamPositionOutOfRangeException(expectedPosition, $"Can't append events past the end position.");
+
         var streamResult = await tableClient.GetEntityIfExistsAsync<StreamEntity>(streamId.Value, options.StreamEntityRowKey, cancellationToken: cancellationToken).ConfigureAwait(false);
         if (streamResult.HasValue && streamResult.Value!.IsDeleted) throw new StreamDeletedException(streamId, $"The Stream {streamId} has been deleted.");
         var streamEntity = streamResult.HasValue ? streamResult.Value! : streamId.ToStreamEntity(StreamPosition.Start, StreamPosition.Start, options);
         
-        StreamPosition currentPosition = new(streamEntity.Sequence);
+        StreamPosition currentPosition = StreamPosition.From(streamEntity.Sequence);
         if (currentPosition != expectedPosition) throw new StreamConcurrencyException(expectedPosition, currentPosition);
 
         // global position can be useful when projecting to event streams
@@ -43,7 +44,7 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
                 : currentPosition;
 
         List<EventEnvelope> envelopes = [];
-        foreach (var batch in GenerateSaveBatchAsync(streamId, currentPosition, globalPosition, events, metadata))
+        foreach (var batch in GenerateSaveBatch(streamId, currentPosition, globalPosition, events, metadata))
         {
             globalPosition = batch.GlobalPosition;
             streamEntity.Sequence = batch.CurrentPosition.Value;
@@ -71,23 +72,49 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
         return new Stream(streamId, globalPosition, envelopes);
     }
 
-    public async Task DeleteStreamAsync(StreamId streamId, StreamPosition expectedSequence, CancellationToken cancellationToken = default)
+    public async Task<long> DeleteStreamAsync(StreamId streamId, StreamPosition expectedPosition, CancellationToken cancellationToken = default)
     {
         var streamResult = await tableClient.GetEntityIfExistsAsync<StreamEntity>(streamId.Value, options.StreamEntityRowKey, cancellationToken: cancellationToken).ConfigureAwait(false);
         if (!streamResult.HasValue) throw new StreamNotFoundException(streamId);
+
+        var currentPosition = StreamPosition.From(streamResult.Value!.Sequence);
+        if (currentPosition != expectedPosition) throw new StreamConcurrencyException(expectedPosition, currentPosition);
         var streamEntity = streamResult.Value!;
-        if (options.DisableSoftDelete)
-        {
-            var deleteResponse = await tableClient.DeleteEntityAsync(streamEntity.PartitionKey, streamEntity.RowKey, cancellationToken: cancellationToken).ConfigureAwait(false);
-            deleteResponse.ThrowOnError($"Failed to delete stream with status code {deleteResponse.Status}");
-        }
-        else
+
+        if (options.DeleteMode == StreamDeleteMode.Soft)
         {
             streamEntity.IsDeleted = true;
             streamEntity.DeletedOn = DateTimeOffset.Now;
             var deleteResponse = await tableClient.UpdateEntityAsync(streamEntity, streamEntity.ETag, cancellationToken: cancellationToken).ConfigureAwait(false);
             deleteResponse.ThrowOnError($"Failed to soft delete stream with status code {deleteResponse.Status}");
+            return streamEntity.Sequence;
         }
+        else
+        {
+            List<ITableEntity> deletableEntities = [];
+            await foreach(var deleteEntity in tableClient.QueryAsync<ITableEntity>(e => e.PartitionKey == streamId.Value, cancellationToken: cancellationToken)) deletableEntities.Add(deleteEntity);
+            foreach (var batch in GenerateDeleteBatch(deletableEntities))
+            {
+                var response = await tableClient.SubmitTransactionAsync(batch, cancellationToken: cancellationToken).ConfigureAwait(false);
+                response.Value.ToList().ForEach(r => r.ThrowOnError($"Failed to delete stream entities with status code {r.Status}"));
+            }
+            return deletableEntities.Count;
+        }
+    }
+
+    private IEnumerable<IEnumerable<TableTransactionAction>> GenerateDeleteBatch(IEnumerable<ITableEntity> tableEntities)
+    {
+        List<TableTransactionAction> batch = [];
+        foreach (var entity in tableEntities)
+        {
+            batch.Add(new(TableTransactionActionType.Delete, entity));
+            if (batch.Count >= options.TransactionBatchSize)
+            {
+                yield return batch;
+                batch.Clear();
+            }
+        }
+        if (batch.Count > 0) yield return batch;
     }
 
     protected virtual void OnEventsAppended(Stream stream)
@@ -105,10 +132,10 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
     {
         List<StreamEntity> entities = [];
         await foreach (var entity in tableClient.QueryAsync<StreamEntity>(e => e.RowKey == options.StreamEntityRowKey, cancellationToken: cancellationToken)) entities.Add(entity);
-        return entities.Count == 0 ? StreamPosition.Start : new(entities.Sum(static e => e.Sequence));
+        return entities.Count == 0 ? StreamPosition.Start : StreamPosition.From(entities.Sum(static e => e.Sequence));
     }
 
-    private IEnumerable<TransactionBatch> GenerateSaveBatchAsync(StreamId streamId, StreamPosition startPosition, StreamPosition globalPosition, IEnumerable<object> events, EventMetadata? metadata = default)
+    private IEnumerable<TransactionBatch> GenerateSaveBatch(StreamId streamId, StreamPosition startPosition, StreamPosition globalPosition, IEnumerable<object> events, EventMetadata? metadata = default)
     {
         TransactionBatch batch = new(streamId, startPosition, globalPosition, options.StreamTypeProvider, metadata, options);
         foreach (var @event in events)

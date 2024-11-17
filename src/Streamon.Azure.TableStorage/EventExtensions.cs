@@ -9,8 +9,8 @@ internal static class EventExtensions
             .Where(e => e.RowKey.StartsWith(options.EventEntityRowKeyPrefix))
             .Select(e => new EventEnvelope(
                     new EventId(e.EventId), 
-                    new(e.Sequence), 
-                    new(e.GlobalSequence), 
+                    StreamPosition.From(e.Sequence),
+                    StreamPosition.From(e.GlobalSequence), 
                     e.CreatedOn,
                     options.StreamTypeProvider.ResolveEvent(e.Type, e.Data),
                     options.StreamTypeProvider.ResolveMetadata(e.Metadata)));

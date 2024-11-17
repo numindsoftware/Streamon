@@ -1,9 +1,10 @@
 ﻿using Microsoft.Azure.Cosmos;
 using Testcontainers.CosmosDb;
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
 
 namespace Streamon.Azure.CosmosDb.Tests;
 
-internal class ContainerFixture : IAsyncLifetime
+public class ContainerFixture : IAsyncLifetime
 {
     public ContainerFixture() => TestContainer = new CosmosDbBuilder().WithName("streamon-cosmosdb").Build();
 
@@ -18,5 +19,5 @@ internal class ContainerFixture : IAsyncLifetime
 
     public CosmosDbContainer TestContainer { get; private set; }
 
-    public CosmosClient? CosmosClient { get; private set; }
+    public CosmosClient CosmosClient { get; private set; } = null!;
 }

@@ -8,6 +8,24 @@ Event streaming store platform for real-time data processing and analytics.
 * [Azure Cosmos DB](https://developer.azurecosmosdb.com/tools) (_in progress_)
 
 ## Features
+
+* POCO events, no base classes or inheritance required
+* Event ids and Metadata detectiom by using both Attribute and Interface markers
+* Customizable serialization and Type resolution
+* Flexible Stream sorage naming and paritioning, e.g. allowing for multitenancy by using one stream per tenant
+* Optimistic Concurrency Control.
+* Soft and Hard Deletion.
+* Global event positioning.
+
+## To Do's
+
+* Telemetry
+* Snapshots and Checkpoints
+* Subscriptions
+* Relational Stores (Entity Framework?)
+* Claim Checks for large events
+* Stream Projections
+* Stream Sweeper (Archiving and Purging)
  
 ## Thanks
 

@@ -2,9 +2,9 @@
 
 public interface IStreamManager
 {
-    Task DeleteStreamAsync(
+    Task<long> DeleteStreamAsync(
         StreamId streamId,
-        StreamPosition expectedSequence,
+        StreamPosition expectedPosition,
         CancellationToken cancellationToken = default);
 
     public event EventHandler<StreamIdEventArgs>? StreamDeleted;

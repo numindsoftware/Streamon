@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Streamon.Tests.Fixtures;
-using System.Text.Json;
 
 namespace Streamon.Azure.TableStorage.Tests;
 
@@ -11,7 +10,7 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
     public async Task CreateStoreThroughServiceCollection()
     {
         var services = new ServiceCollection();
-        services.AddStreamon().AddTableStorageEventStore(containerFixture.TestContainer.GetConnectionString());
+        services.AddStreamon().AddTableStorageStreamStore(containerFixture.TestContainer.GetConnectionString());
         var provider = services.BuildServiceProvider();
 
         var provisioner = provider.GetRequiredService<IStreamStoreProvisioner>();
@@ -78,6 +77,22 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
         var readStream = await store.FetchAsync(new StreamId("order-124"));
         Assert.NotEmpty(readStream);
         Assert.Equal(9, readStream.Count());
+    }
+
+    [Fact, Priority(7)]
+    public async Task SoftDeletesExistingStream()
+    {
+        var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync(nameof(IntegrationStreamTests));
+        var totalDeleted = await store.DeleteStreamAsync(new StreamId("order-124"), StreamPosition.Any);
+        Assert.Equal(9, totalDeleted);
+    }
+
+    [Fact, Priority(8)]
+    public async Task HardDeletesExistingStream()
+    {
+        var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync(nameof(IntegrationStreamTests));
+        var totalDeleted = await store.DeleteStreamAsync(new StreamId("order-123"), StreamPosition.Any);
+        Assert.Equal(3, totalDeleted);
     }
 
     public record TestEvent1([property: EventId] string Id);

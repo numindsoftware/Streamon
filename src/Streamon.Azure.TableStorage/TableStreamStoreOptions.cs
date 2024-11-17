@@ -10,10 +10,18 @@ public class TableStreamStoreOptions(IStreamTypeProvider streamTypeProvider)
     public bool CalculateGlobalPosition { get; set; } = false;
     /// <summary>
     /// Disabling soft delete will have both performance penalties and will make it impossible to recover deleted streams.
-    /// Azure table does not allow for batch delete operations, so each entity will be deleted one by one.
+    /// Defaults to Soft delete mode, an IsDeleted flag will be set to true and a DeletedOn timestamp will be recorded.
+    /// Internally Soft deletes will only be tracked at the Stream level, and not at the Event level.
     /// </summary>
-    public bool DisableSoftDelete { get; set; } = false;
+    /// <remarks>
+    /// Note that hard deletes in Table Storage is an expensive and slow operation since Azure table does not allow for batch delete operations, so each entity will be deleted one by one.
+    /// </remarks>
+    public StreamDeleteMode DeleteMode { get; set; } = StreamDeleteMode.Soft;
 
+    /// <summary>
+    /// Azure table storage has a maximum batch size of 100. This is the default value, but can be adjusted to a lower value if needed.
+    /// Effectively events occupy two rows in the table, one for the event id and one for the event details, this effectively means that the batch size will by of 48 events or less (space is needed for other entities such as the Stream and posible snapshots).
+    /// </summary>
     public byte TransactionBatchSize { get; set; } = 100;
 
     /// <summary>
