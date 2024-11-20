@@ -43,33 +43,32 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
                 ? (await FetchLatestGlobalPositionAsync(cancellationToken).ConfigureAwait(false))
                 : currentPosition;
 
-        List<EventEnvelope> envelopes = [];
-        foreach (var batch in GenerateSaveBatch(streamId, currentPosition, globalPosition, events, metadata))
+        //var batch = GenerateSaveBatch(streamId, currentPosition, globalPosition, events, metadata);
+
+        TransactionBatch batch = new(streamId, currentPosition, globalPosition, options.StreamTypeProvider, metadata, options);
+        foreach (var @event in events)
         {
-            globalPosition = batch.GlobalPosition;
-            streamEntity.Sequence = batch.CurrentPosition.Value;
-            streamEntity.GlobalSequence = batch.GlobalPosition.Value;
-            streamEntity.UpdatedOn = DateTimeOffset.UtcNow;
-            TableTransactionAction[] streamTransactions = [new(TableTransactionActionType.UpsertMerge, streamEntity), .. batch.Transactions];
-            try
-            {
-                var response = await tableClient.SubmitTransactionAsync(streamTransactions, cancellationToken).ConfigureAwait(false);
-                response.Value.ToList().ForEach(r => r.ThrowOnError($"Failed to upsert stream with status code {r.Status}"));
-                // update the ETag for the next batch, needed otherwise we fail due to concurrency control
-                streamEntity.ETag = response.Value[0].Headers.ETag!.Value;
-                envelopes.AddRange(batch.EventEnvelopes);
-            }
-            catch (TableTransactionFailedException ex) when (ex.ErrorCode == TableErrorCode.EntityAlreadyExists || ex.ErrorCode == TableErrorCode.InvalidDuplicateRow)
-            {
-                var entityId = new EventId(streamTransactions[ex.FailedTransactionActionIndex!.Value].Entity.RowKey.Replace(options.EventIdEntityRowKeyPrefix, string.Empty));
-                throw new DuplicateEventException(entityId);
-            }
-            catch (RequestFailedException ex)
-            {
-                throw new TableStorageOperationException($"An error occurred while saving events. {ex.Message}", ex);
-            }
+            if (batch.AddTransactions(@event)) throw new BatchSizeExceededException(batch.Transactions.Count(), options.TransactionBatchSize, $"The number of events to append exceeds the maximum batch size of {options.TransactionBatchSize}.");
         }
-        return new Stream(streamId, globalPosition, envelopes);
+        streamEntity.Sequence = batch.CurrentPosition.Value;
+        streamEntity.GlobalSequence = batch.GlobalPosition.Value;
+        streamEntity.UpdatedOn = DateTimeOffset.UtcNow;
+        TableTransactionAction[] streamTransactions = [new(TableTransactionActionType.UpsertMerge, streamEntity), .. batch.Transactions];
+        try
+        {
+            var response = await tableClient.SubmitTransactionAsync(streamTransactions, cancellationToken).ConfigureAwait(false);
+            response.Value.ToList().ForEach(r => r.ThrowOnError($"Failed to upsert stream with status code {r.Status}"));
+        }
+        catch (TableTransactionFailedException ex) when (ex.ErrorCode == TableErrorCode.EntityAlreadyExists || ex.ErrorCode == TableErrorCode.InvalidDuplicateRow)
+        {
+            var entityId = new EventId(streamTransactions[ex.FailedTransactionActionIndex!.Value].Entity.RowKey.Replace(options.EventIdEntityRowKeyPrefix, string.Empty));
+            throw new DuplicateEventException(entityId);
+        }
+        catch (RequestFailedException ex)
+        {
+            throw new TableStorageOperationException($"An error occurred while saving events. {ex.Message}", ex);
+        }
+        return new Stream(streamId, batch.GlobalPosition, batch.EventEnvelopes);
     }
 
     public async Task<long> DeleteStreamAsync(StreamId streamId, StreamPosition expectedPosition, CancellationToken cancellationToken = default)
@@ -135,24 +134,12 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
         return entities.Count == 0 ? StreamPosition.Start : StreamPosition.From(entities.Sum(static e => e.Sequence));
     }
 
-    private IEnumerable<TransactionBatch> GenerateSaveBatch(StreamId streamId, StreamPosition startPosition, StreamPosition globalPosition, IEnumerable<object> events, EventMetadata? metadata = default)
-    {
-        TransactionBatch batch = new(streamId, startPosition, globalPosition, options.StreamTypeProvider, metadata, options);
-        foreach (var @event in events)
-        {
-            if (batch.AddTransactions(@event))
-            {
-                yield return batch;
-                batch.Reset();
-            }
-        }
-        if (batch.Transactions.Any()) yield return batch;
-    }
-
     private class TransactionBatch(StreamId streamId, StreamPosition startPosition, StreamPosition globalPosition, IStreamTypeProvider streamTypeProvider, EventMetadata? metadata, TableStreamStoreOptions options)
     {
+        private readonly BatchId _batchId = BatchId.New();
         private readonly List<TableTransactionAction> _tableTransactionActions = [];
         private readonly List<EventEnvelope> _eventEnvelopes = [];
+
         public StreamPosition CurrentPosition { get; private set; } = startPosition;
         public StreamPosition GlobalPosition { get; private set; } = globalPosition;
         public IEnumerable<TableTransactionAction> Transactions { get => _tableTransactionActions; }
@@ -166,9 +153,9 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
         {
             CurrentPosition = CurrentPosition.Next();
             GlobalPosition = GlobalPosition.Next();
-            var eventEnvelope = @event.ToEventEnvelope(CurrentPosition, GlobalPosition, DateTimeOffset.UtcNow, metadata);
+            var eventEnvelope = @event.ToEventEnvelope(_batchId, CurrentPosition, GlobalPosition, DateTimeOffset.UtcNow, metadata);
             var transactions = eventEnvelope
-                .ToEventEntityPair(streamId, GlobalPosition, metadata, streamTypeProvider, options)
+                .ToEventEntityPair(streamId, _batchId, GlobalPosition, metadata, streamTypeProvider, options)
                 .Select(e => new TableTransactionAction(TableTransactionActionType.Add, e));
             _tableTransactionActions.AddRange(transactions);
             _eventEnvelopes.Add(eventEnvelope);

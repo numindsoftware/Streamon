@@ -2,6 +2,7 @@
 
 public class TableStreamStoreOptions(IStreamTypeProvider streamTypeProvider)
 {
+    public string TableName { get; set; } = nameof(Streamon);
     public IStreamTypeProvider StreamTypeProvider { get; set; } = streamTypeProvider;
     /// <summary>
     /// Retrieving the global position is an expensive operation, and it is not always needed.

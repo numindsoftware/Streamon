@@ -1,20 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Microsoft.Azure.Cosmos;
 
 namespace Streamon.Azure.CosmosDb;
 
-internal class CosmosDbStreamStoreProvisioner : IStreamStoreProvisioner
+public class CosmosDbStreamStoreProvisioner(CosmosClient cosmosClient, CosmosDbStreamStoreOptions options) : IStreamStoreProvisioner
 {
-    public Task<IStreamStore> CreateStoreAsync(string name = "Streamon", CancellationToken cancellationToken = default)
+    public async Task<IStreamStore> CreateStoreAsync(string name = nameof(Streamon), CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var database = cosmosClient.GetDatabase(options.DatabaseName);
+        var container = await database.CreateContainerIfNotExistsAsync(new ContainerProperties(name, "/streamId"), options.Throughput);
+        return new CosmosDbStreamStore(container, options);
     }
 
     public Task DeleteStore(string name, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var database = cosmosClient.GetDatabase(options.DatabaseName);
+        var container = database.GetContainer(name);
+        return container.DeleteContainerAsync(cancellationToken: cancellationToken);
     }
 }

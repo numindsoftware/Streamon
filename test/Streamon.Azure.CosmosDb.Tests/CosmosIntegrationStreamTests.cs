@@ -8,12 +8,7 @@ public class CosmosIntegrationStreamTests(ContainerFixture containerFixture) : I
     [Fact]
     public async Task AppendsNewEventsToStream()
     {
-        IServiceCollection services = new ServiceCollection();
-        services.AddStreamon().AddCosmosDbStreamStore(containerFixture.CosmosClient); //"AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEca4x9Dp6Iy3sA==;");
-        var provider = services.BuildServiceProvider();
-        var provisioner = provider.GetRequiredService<IStreamStoreProvisioner>();
-
-        var store = await provisioner.CreateStoreAsync(nameof(CosmosIntegrationStreamTests));
+        var store = await containerFixture.StreamStoreProvisioner.CreateStoreAsync(nameof(CosmosIntegrationStreamTests));
         IEnumerable<object> events = 
         [
             OrderEvents.OrderCaptured,

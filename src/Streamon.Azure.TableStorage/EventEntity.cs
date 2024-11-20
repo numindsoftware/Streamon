@@ -18,6 +18,10 @@ internal class EventEntity : ITableEntity
 
     public required long Sequence { get; set; }
     public required long GlobalSequence { get; set; }
+    /// <summary>
+    /// An id assigned to a group of events that are appended together
+    /// </summary>
+    public required string BatchId { get; set; }
     public DateTimeOffset CreatedOn { get; set; } = DateTimeOffset.Now;
     /// <summary>
     /// Fully qualified type name

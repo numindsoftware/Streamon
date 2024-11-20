@@ -1,5 +1,4 @@
 ﻿using Azure.Data.Tables;
-using DotNet.Testcontainers.Builders;
 using Streamon.Tests.Fixtures;
 using System.Text.Json;
 using Testcontainers.Azurite;

@@ -3,7 +3,7 @@
 public interface IStreamWriter
 {
     Task<Stream> AppendAsync(
-        StreamId id,
+        StreamId streamId,
         StreamPosition expectedPosition, 
         IEnumerable<object> events,
         EventMetadata? metadata = default,

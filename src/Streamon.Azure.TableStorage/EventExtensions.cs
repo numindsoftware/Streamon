@@ -8,14 +8,15 @@ internal static class EventExtensions
         eventEntities
             .Where(e => e.RowKey.StartsWith(options.EventEntityRowKeyPrefix))
             .Select(e => new EventEnvelope(
-                    new EventId(e.EventId), 
+                    EventId.From(e.EventId), 
                     StreamPosition.From(e.Sequence),
-                    StreamPosition.From(e.GlobalSequence), 
+                    StreamPosition.From(e.GlobalSequence),
                     e.CreatedOn,
+                    BatchId.From(e.BatchId),
                     options.StreamTypeProvider.ResolveEvent(e.Type, e.Data),
                     options.StreamTypeProvider.ResolveMetadata(e.Metadata)));
 
-    public static ITableEntity ToEventEntity(this object @event, EventId eventId, StreamId streamId, StreamPosition position, StreamPosition globalPosition, EventMetadata? metadata, IStreamTypeProvider streamTypeProvider, TableStreamStoreOptions options)
+    public static ITableEntity ToEventEntity(this object @event, EventId eventId, StreamId streamId, BatchId batchId, StreamPosition position, StreamPosition globalPosition, EventMetadata? metadata, IStreamTypeProvider streamTypeProvider, TableStreamStoreOptions options)
     {
         var eventTypeInfo = streamTypeProvider.SerializeEvent(@event);
         return new EventEntity
@@ -25,6 +26,7 @@ internal static class EventExtensions
             Sequence = position.Value,
             GlobalSequence = globalPosition.Value,
             EventId = eventId.Value,
+            BatchId = batchId.Value,
             Data = eventTypeInfo.Data,
             Type = eventTypeInfo.Type,
             Metadata = streamTypeProvider.SerializeMetadata(@event.GetEventMetadata(metadata)),
@@ -43,9 +45,9 @@ internal static class EventExtensions
             CreatedOn = DateTimeOffset.UtcNow
         };
 
-    public static IEnumerable<ITableEntity> ToEventEntityPair(this EventEnvelope eventEnvelope, StreamId streamId, StreamPosition globalPosition, EventMetadata? metadata, IStreamTypeProvider streamTypeProvider, TableStreamStoreOptions options) =>
+    public static IEnumerable<ITableEntity> ToEventEntityPair(this EventEnvelope eventEnvelope, StreamId streamId, BatchId batchId, StreamPosition globalPosition, EventMetadata? metadata, IStreamTypeProvider streamTypeProvider, TableStreamStoreOptions options) =>
         [
-            eventEnvelope.Payload.ToEventEntity(eventEnvelope.EventId, streamId, eventEnvelope.StreamPosition, globalPosition, metadata, streamTypeProvider, options),
+            eventEnvelope.Payload.ToEventEntity(eventEnvelope.EventId, streamId, batchId, eventEnvelope.StreamPosition, globalPosition, metadata, streamTypeProvider, options),
             new EventIdEntity { PartitionKey = streamId.Value, RowKey = eventEnvelope.EventId.ToEventIdEntityRowKey(options) }
         ];
 

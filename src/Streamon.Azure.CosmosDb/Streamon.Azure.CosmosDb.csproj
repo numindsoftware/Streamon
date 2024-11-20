@@ -1,6 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <None Remove="Server\DeleteStream.js" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Server\DeleteStream.js" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.45.2" />
   </ItemGroup>
 

@@ -1,4 +1,4 @@
-﻿namespace Streamon.Azure.TableStorage;
+﻿namespace Streamon;
 
 public enum StreamDeleteMode
 {

@@ -26,6 +26,16 @@ Event streaming store platform for real-time data processing and analytics.
 * Claim Checks for large events
 * Stream Projections
 * Stream Sweeper (Archiving and Purging)
+
+## Azure Table Storage Provider Details
+
+The Azure Table Storage provider is a simple implementation of the `IStreamStore` interface.
+It uses Azure Table Storage to store events in a single table.
+The table is partitioned by the stream id and the row key is the event id.
+The provider uses the `Ulid` library to generate unique identifiers for events.
+
+Table Storage only support batches of up to 100 entities, trying to write more than that will result in an exception.
+The responsibility of handling this is left to the caller, as the provider does not implement any batching logic due to the fact that it can't guarantee the consistency of persistence across different batches.
  
 ## Thanks
 
