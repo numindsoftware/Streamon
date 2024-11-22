@@ -25,10 +25,6 @@ public class TableStreamStoreOptions(IStreamTypeProvider streamTypeProvider)
     /// </summary>
     public string StreamEntityRowKey { get; set; } = "SO-STREAM";
     /// <summary>
-    /// Thre prefix to use in the RowKey colums for event id  entities. Defaults to "SO-ID-".
-    /// </summary>
-    public string EventIdEntityRowKeyPrefix { get; set; } = "SO-ID-";
-    /// <summary>
     /// Thre prefix to use in the RowKey colums for event details entities. Defaults to "SO-EVENT-".
     /// </summary>
     public string EventEntityRowKeyPrefix { get; set; } = "SO-EVENT-";

@@ -8,13 +8,13 @@ internal static class EventExtensions
         eventEntities
             .Where(e => e.RowKey.StartsWith(options.EventEntityRowKeyPrefix))
             .Select(e => new EventEnvelope(
-                    EventId.From(e.EventId), 
-                    StreamPosition.From(e.Sequence),
-                    StreamPosition.From(e.GlobalSequence),
-                    e.CreatedOn,
-                    BatchId.From(e.BatchId),
-                    options.StreamTypeProvider.ResolveEvent(e.Type, e.Data),
-                    options.StreamTypeProvider.ResolveMetadata(e.Metadata)));
+                EventId.From(e.EventId), 
+                StreamPosition.From(e.Sequence),
+                StreamPosition.From(e.GlobalSequence),
+                e.CreatedOn,
+                BatchId.From(e.BatchId),
+                options.StreamTypeProvider.ResolveEvent(e.Type, e.Data),
+                options.StreamTypeProvider.ResolveMetadata(e.Metadata)));
 
     public static ITableEntity ToEventEntity(this object @event, EventId eventId, StreamId streamId, BatchId batchId, StreamPosition position, StreamPosition globalPosition, EventMetadata? metadata, IStreamTypeProvider streamTypeProvider, TableStreamStoreOptions options)
     {
@@ -22,7 +22,7 @@ internal static class EventExtensions
         return new EventEntity
         {
             PartitionKey = streamId.Value,
-            RowKey = position.ToEventEntityRowKey(options),
+            RowKey = $"{options.EventEntityRowKeyPrefix}{eventId}",
             Sequence = position.Value,
             GlobalSequence = globalPosition.Value,
             EventId = eventId.Value,
@@ -30,7 +30,7 @@ internal static class EventExtensions
             Data = eventTypeInfo.Data,
             Type = eventTypeInfo.Type,
             Metadata = streamTypeProvider.SerializeMetadata(@event.GetEventMetadata(metadata)),
-            CreatedOn = DateTimeOffset.UtcNow,
+            CreatedOn = DateTimeOffset.Now,
         };
     }
 
@@ -45,13 +45,5 @@ internal static class EventExtensions
             CreatedOn = DateTimeOffset.UtcNow
         };
 
-    public static IEnumerable<ITableEntity> ToEventEntityPair(this EventEnvelope eventEnvelope, StreamId streamId, BatchId batchId, StreamPosition globalPosition, EventMetadata? metadata, IStreamTypeProvider streamTypeProvider, TableStreamStoreOptions options) =>
-        [
-            eventEnvelope.Payload.ToEventEntity(eventEnvelope.EventId, streamId, batchId, eventEnvelope.StreamPosition, globalPosition, metadata, streamTypeProvider, options),
-            new EventIdEntity { PartitionKey = streamId.Value, RowKey = eventEnvelope.EventId.ToEventIdEntityRowKey(options) }
-        ];
-
-    public static string ToEventIdEntityRowKey(this EventId eventId, TableStreamStoreOptions options) => $"{options.EventIdEntityRowKeyPrefix}{eventId.Value:0}";
-    public static string ToEventEntityRowKey(this StreamPosition eventPosition, TableStreamStoreOptions options) => $"{options.EventEntityRowKeyPrefix}{eventPosition.Value:000000000000000000}";
     public static string ToSnapshotEntityRowKey(this Type projectionType, TableStreamStoreOptions options) => $"{options.SnapshotEntityPrefix}{projectionType.Name}";
 }

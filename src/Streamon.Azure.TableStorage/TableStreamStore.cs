@@ -30,6 +30,7 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
     public async Task<Stream> AppendAsync(StreamId streamId, StreamPosition expectedPosition, IEnumerable<object> events, EventMetadata? metadata = null, CancellationToken cancellationToken = default)
     {
         if (expectedPosition == StreamPosition.End) throw new StreamPositionOutOfRangeException(expectedPosition, $"Can't append events past the end position.");
+        if (events.Count() >= options.TransactionBatchSize) throw new BatchSizeExceededException(events.Count(), options.TransactionBatchSize, $"The number of events to append exceeds the maximum batch size of {options.TransactionBatchSize}.");
 
         var streamResult = await tableClient.GetEntityIfExistsAsync<StreamEntity>(streamId.Value, options.StreamEntityRowKey, cancellationToken: cancellationToken).ConfigureAwait(false);
         if (streamResult.HasValue && streamResult.Value!.IsDeleted) throw new StreamDeletedException(streamId, $"The Stream {streamId} has been deleted.");
@@ -39,15 +40,23 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
         if (currentPosition != expectedPosition) throw new StreamConcurrencyException(expectedPosition, currentPosition);
         var globalPosition = StreamPosition.From(await FetchLatestGlobalPositionAsync(streamEntity.GlobalSequence, cancellationToken).ConfigureAwait(false));
 
-        TransactionBatch batch = new(streamId, currentPosition, globalPosition, options.StreamTypeProvider, metadata, options);
+        var batchId = BatchId.New();
+        List<TableTransactionAction> streamTransactions = [];
+        List<EventEnvelope> eventEnvelopes = [];
         foreach (var @event in events)
         {
-            if (batch.AddTransactions(@event)) throw new BatchSizeExceededException(batch.Transactions.Count(), options.TransactionBatchSize, $"The number of events to append exceeds the maximum batch size of {options.TransactionBatchSize}.");
+            currentPosition = currentPosition.Next();
+            globalPosition = globalPosition.Next();
+            var eventEnvelope = @event.ToEventEnvelope(batchId, currentPosition, globalPosition, metadata);
+            var eventEntity = @event.ToEventEntity(eventEnvelope.EventId, streamId, batchId, currentPosition, globalPosition, metadata, options.StreamTypeProvider, options);
+            eventEnvelopes.Add(eventEnvelope);
+            streamTransactions.Add(new TableTransactionAction(TableTransactionActionType.Add, eventEntity));
         }
-        streamEntity.Sequence = batch.CurrentPosition.Value;
-        streamEntity.GlobalSequence = batch.GlobalPosition.Value;
-        streamEntity.UpdatedOn = DateTimeOffset.UtcNow;
-        TableTransactionAction[] streamTransactions = [new(TableTransactionActionType.UpsertMerge, streamEntity), .. batch.Transactions];
+
+        streamEntity.Sequence = currentPosition.Value;
+        streamEntity.GlobalSequence = globalPosition.Value;
+        streamEntity.UpdatedOn = DateTimeOffset.Now;
+        streamTransactions.Add(new(TableTransactionActionType.UpsertMerge, streamEntity));
         try
         {
             var response = await tableClient.SubmitTransactionAsync(streamTransactions, cancellationToken).ConfigureAwait(false);
@@ -55,14 +64,14 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
         }
         catch (TableTransactionFailedException ex) when (ex.ErrorCode == TableErrorCode.EntityAlreadyExists || ex.ErrorCode == TableErrorCode.InvalidDuplicateRow)
         {
-            var entityId = new EventId(streamTransactions[ex.FailedTransactionActionIndex!.Value].Entity.RowKey.Replace(options.EventIdEntityRowKeyPrefix, string.Empty));
+            var entityId = new EventId(streamTransactions[ex.FailedTransactionActionIndex!.Value].Entity.RowKey.Replace(options.EventEntityRowKeyPrefix, string.Empty));
             throw new DuplicateEventException(entityId);
         }
         catch (RequestFailedException ex)
         {
             throw new TableStorageOperationException($"An error occurred while saving events. {ex.Message}", ex);
         }
-        return new Stream(streamId, batch.GlobalPosition, batch.EventEnvelopes);
+        return new Stream(streamId, globalPosition, eventEnvelopes);
     }
 
     public async Task<long> DeleteStreamAsync(StreamId streamId, StreamPosition expectedPosition, CancellationToken cancellationToken = default)
@@ -95,6 +104,17 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
         }
     }
 
+    protected virtual void OnEventsAppended(Stream stream)
+    {
+        options.OnEventsAppended?.Invoke(stream);
+        EventsAppended?.Invoke(this, new(stream));
+    }
+    protected virtual void OnStreamDeleted(StreamId streamId)
+    {
+        options.OnStreamDeleted?.Invoke(streamId);
+        StreamDeleted?.Invoke(this, new(streamId));
+    }
+
     private IEnumerable<IEnumerable<TableTransactionAction>> GenerateDeleteBatch(IEnumerable<ITableEntity> tableEntities)
     {
         List<TableTransactionAction> batch = [];
@@ -110,52 +130,10 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
         if (batch.Count > 0) yield return batch;
     }
 
-    protected virtual void OnEventsAppended(Stream stream)
-    {
-        options.OnEventsAppended?.Invoke(stream);
-        EventsAppended?.Invoke(this, new(stream));
-    }
-    protected virtual void OnStreamDeleted(StreamId streamId)
-    {
-        options.OnStreamDeleted?.Invoke(streamId);
-        StreamDeleted?.Invoke(this, new(streamId));
-    }
-
     private async Task<long> FetchLatestGlobalPositionAsync(long globalPosition, CancellationToken cancellationToken = default)
     {
         List<StreamEntity> entities = [];
         await foreach (var entity in tableClient.QueryAsync<StreamEntity>(e => e.RowKey == options.StreamEntityRowKey && e.GlobalSequence >= globalPosition, cancellationToken: cancellationToken)) entities.Add(entity);
         return entities.Count == 0 ? globalPosition : entities.Max(static e => e.GlobalSequence);
-    }
-
-    private class TransactionBatch(StreamId streamId, StreamPosition startPosition, StreamPosition globalPosition, IStreamTypeProvider streamTypeProvider, EventMetadata? metadata, TableStreamStoreOptions options)
-    {
-        private readonly BatchId _batchId = BatchId.New();
-        private readonly List<TableTransactionAction> _tableTransactionActions = [];
-        private readonly List<EventEnvelope> _eventEnvelopes = [];
-
-        public StreamPosition CurrentPosition { get; private set; } = startPosition;
-        public StreamPosition GlobalPosition { get; private set; } = globalPosition;
-        public IEnumerable<TableTransactionAction> Transactions { get => _tableTransactionActions; }
-        public IEnumerable<EventEnvelope> EventEnvelopes { get => _eventEnvelopes; }
-        public void Reset()
-        {
-            _tableTransactionActions.Clear();
-            _eventEnvelopes.Clear();
-        }
-        public bool AddTransactions(object @event)
-        {
-            CurrentPosition = CurrentPosition.Next();
-            GlobalPosition = GlobalPosition.Next();
-            var eventEnvelope = @event.ToEventEnvelope(_batchId, CurrentPosition, GlobalPosition, DateTimeOffset.UtcNow, metadata);
-            var transactions = eventEnvelope
-                .ToEventEntityPair(streamId, _batchId, GlobalPosition, metadata, streamTypeProvider, options)
-                .Select(e => new TableTransactionAction(TableTransactionActionType.Add, e));
-            _tableTransactionActions.AddRange(transactions);
-            _eventEnvelopes.Add(eventEnvelope);
-            // what follow is to ensure that we don't exceed the max batch size while accounting for the fact that we need to add the stream entity as well
-            // The modulus operation is to ensure that we don't end up with a larger number of transactions than the max batch size
-            return _tableTransactionActions.Count >= (options.TransactionBatchSize + (options.TransactionBatchSize % 2) - 2);
-        }
     }
 }

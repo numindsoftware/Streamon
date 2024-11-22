@@ -33,12 +33,12 @@ public static class EventExtensions
         };
     }
 
-    public static EventEnvelope ToEventEnvelope(this object @event, BatchId batchId, StreamPosition position, StreamPosition globalPosition, DateTimeOffset timestamp, EventMetadata? metadata) =>
+    public static EventEnvelope ToEventEnvelope(this object @event, BatchId batchId, StreamPosition position, StreamPosition globalPosition, EventMetadata? metadata) =>
         new(
             @event.GetEventId(),
             position,
             globalPosition,
-            timestamp,
+            DateTimeOffset.Now,
             batchId,
             @event,
             metadata);
