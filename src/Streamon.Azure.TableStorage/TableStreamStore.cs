@@ -37,13 +37,7 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
         
         StreamPosition currentPosition = StreamPosition.From(streamEntity.Sequence);
         if (currentPosition != expectedPosition) throw new StreamConcurrencyException(expectedPosition, currentPosition);
-
-        // global position can be useful when projecting to event streams
-        var globalPosition = options.CalculateGlobalPosition
-                ? (await FetchLatestGlobalPositionAsync(cancellationToken).ConfigureAwait(false))
-                : currentPosition;
-
-        //var batch = GenerateSaveBatch(streamId, currentPosition, globalPosition, events, metadata);
+        var globalPosition = StreamPosition.From(await FetchLatestGlobalPositionAsync(streamEntity.GlobalSequence, cancellationToken).ConfigureAwait(false));
 
         TransactionBatch batch = new(streamId, currentPosition, globalPosition, options.StreamTypeProvider, metadata, options);
         foreach (var @event in events)
@@ -127,11 +121,11 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
         StreamDeleted?.Invoke(this, new(streamId));
     }
 
-    private async Task<StreamPosition> FetchLatestGlobalPositionAsync(CancellationToken cancellationToken = default)
+    private async Task<long> FetchLatestGlobalPositionAsync(long globalPosition, CancellationToken cancellationToken = default)
     {
         List<StreamEntity> entities = [];
-        await foreach (var entity in tableClient.QueryAsync<StreamEntity>(e => e.RowKey == options.StreamEntityRowKey, cancellationToken: cancellationToken)) entities.Add(entity);
-        return entities.Count == 0 ? StreamPosition.Start : StreamPosition.From(entities.Sum(static e => e.Sequence));
+        await foreach (var entity in tableClient.QueryAsync<StreamEntity>(e => e.RowKey == options.StreamEntityRowKey && e.GlobalSequence >= globalPosition, cancellationToken: cancellationToken)) entities.Add(entity);
+        return entities.Count == 0 ? globalPosition : entities.Max(static e => e.GlobalSequence);
     }
 
     private class TransactionBatch(StreamId streamId, StreamPosition startPosition, StreamPosition globalPosition, IStreamTypeProvider streamTypeProvider, EventMetadata? metadata, TableStreamStoreOptions options)

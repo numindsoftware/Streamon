@@ -5,7 +5,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Streamon\Streamon.csproj" />
+    <ProjectReference Include="..\Streamon.Subscription\Streamon.Subscription.csproj" />
   </ItemGroup>
 
 </Project>

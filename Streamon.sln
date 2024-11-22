@@ -10,8 +10,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.editorconfig = .editorconfig
 		.gitattributes = .gitattributes
 		.gitignore = .gitignore
-		LICENSE = LICENSE
 		Directory.Build.props = Directory.Build.props
+		LICENSE = LICENSE
 		README.md = README.md
 	EndProjectSection
 EndProject
@@ -25,11 +25,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{3DF05FD9-0D6
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{C86955EC-3D94-4BC9-9223-C3468D8BF4F5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Streamon.Azure.TableStorage.Tests", "test\Streamon.Azure.TableStorage.Tests\Streamon.Azure.TableStorage.Tests.csproj", "{76B9557E-F835-4A71-9981-4CC76EABBCC7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Streamon.Azure.TableStorage.Tests", "test\Streamon.Azure.TableStorage.Tests\Streamon.Azure.TableStorage.Tests.csproj", "{76B9557E-F835-4A71-9981-4CC76EABBCC7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Streamon.Azure.CosmosDb.Tests", "test\Streamon.Azure.CosmosDb.Tests\Streamon.Azure.CosmosDb.Tests.csproj", "{760B809C-AACF-4E6A-8481-095B1FB7F21C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Streamon.Azure.CosmosDb.Tests", "test\Streamon.Azure.CosmosDb.Tests\Streamon.Azure.CosmosDb.Tests.csproj", "{760B809C-AACF-4E6A-8481-095B1FB7F21C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Streamon.Tests.Fixtures", "test\Streamon.Tests.Fixtures\Streamon.Tests.Fixtures.csproj", "{C57ECB2B-A8C8-472E-9D42-C31FBD05D73F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Streamon.Tests.Fixtures", "test\Streamon.Tests.Fixtures\Streamon.Tests.Fixtures.csproj", "{C57ECB2B-A8C8-472E-9D42-C31FBD05D73F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Streamon.Subscription", "src\Streamon.Subscription\Streamon.Subscription.csproj", "{40D47D40-C5E3-4328-B1A8-AD7C7188BF32}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Streamon.Subscription.Tests", "test\Streamon.Subscription.Tests\Streamon.Subscription.Tests.csproj", "{F8F31442-7C1D-4738-8C9C-90B7525F7121}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -65,6 +69,14 @@ Global
 		{C57ECB2B-A8C8-472E-9D42-C31FBD05D73F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C57ECB2B-A8C8-472E-9D42-C31FBD05D73F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C57ECB2B-A8C8-472E-9D42-C31FBD05D73F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{40D47D40-C5E3-4328-B1A8-AD7C7188BF32}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{40D47D40-C5E3-4328-B1A8-AD7C7188BF32}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{40D47D40-C5E3-4328-B1A8-AD7C7188BF32}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{40D47D40-C5E3-4328-B1A8-AD7C7188BF32}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F8F31442-7C1D-4738-8C9C-90B7525F7121}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F8F31442-7C1D-4738-8C9C-90B7525F7121}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F8F31442-7C1D-4738-8C9C-90B7525F7121}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F8F31442-7C1D-4738-8C9C-90B7525F7121}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -77,6 +89,8 @@ Global
 		{76B9557E-F835-4A71-9981-4CC76EABBCC7} = {C86955EC-3D94-4BC9-9223-C3468D8BF4F5}
 		{760B809C-AACF-4E6A-8481-095B1FB7F21C} = {C86955EC-3D94-4BC9-9223-C3468D8BF4F5}
 		{C57ECB2B-A8C8-472E-9D42-C31FBD05D73F} = {C86955EC-3D94-4BC9-9223-C3468D8BF4F5}
+		{40D47D40-C5E3-4328-B1A8-AD7C7188BF32} = {3DF05FD9-0D6E-428D-A3AA-858488FC6C9D}
+		{F8F31442-7C1D-4738-8C9C-90B7525F7121} = {C86955EC-3D94-4BC9-9223-C3468D8BF4F5}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F0B0C09A-9668-4463-A82C-E4F285C40CE6}

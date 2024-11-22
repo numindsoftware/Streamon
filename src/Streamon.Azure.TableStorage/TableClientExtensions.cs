@@ -1,4 +1,5 @@
 ﻿using Azure;
+using Azure.Data.Tables;
 using System.Net;
 
 namespace Streamon.Azure.TableStorage;
@@ -9,4 +10,7 @@ internal static class TableClientExtensions
     {
         if (response.Status >= (int)HttpStatusCode.BadRequest) throw new TableStorageOperationException(optionalFailureMessage);
     }
+
+    public static async Task<bool> CheckTableExistsAsync(this TableServiceClient tableClient, string name, CancellationToken cancellationToken = default) =>
+        await tableClient.QueryAsync(name, 1, cancellationToken).GetAsyncEnumerator(cancellationToken).MoveNextAsync();
 }
