@@ -4,5 +4,5 @@ namespace Streamon.Subscription;
 
 public interface ISubscriptionStreamReader
 {
-    public IAsyncEnumerable<EventEnvelope> FetchAsync(Checkpoint fromCheckpoint, CancellationToken cancellationToken = default);
+    public IAsyncEnumerable<Event> FetchAsync(Checkpoint fromCheckpoint, CancellationToken cancellationToken = default);
 }

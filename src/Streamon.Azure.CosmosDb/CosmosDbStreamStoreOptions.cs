@@ -17,7 +17,7 @@ public class CosmosDbStreamStoreOptions(IStreamTypeProvider streamTypeProvider, 
     /// <summary>
     /// Set a delegate to be called when events are appended to a stream.
     /// </summary>
-    public Action<Stream> OnEventsAppended { get; set; } = _ => { };
+    public Action<IEnumerable<Event>> OnEventsAppended { get; set; } = _ => { };
     /// <summary>
     /// Set a delegate to be called when a stream is deleted.
     /// </summary>
@@ -25,5 +25,5 @@ public class CosmosDbStreamStoreOptions(IStreamTypeProvider streamTypeProvider, 
     /// <summary>
     /// Register a projection generator for a stream type. The generator is called for every stream update and saved along its type in every stream document.
     /// </summary>
-    public Func<StreamId, IEnumerable<EventEnvelope>, object>? ProjectionGenerator { get; set; }
+    public Func<StreamId, IEnumerable<Event>, object>? ProjectionGenerator { get; set; }
 }

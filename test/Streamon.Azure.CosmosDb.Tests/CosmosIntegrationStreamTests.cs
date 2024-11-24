@@ -16,7 +16,7 @@ public class CosmosIntegrationStreamTests(ContainerFixture containerFixture) : I
             OrderEvents.OrderShipped,
             OrderEvents.OrderFulfilled
         ];
-        var stream = await store.AppendAsync(new("order-123"), StreamPosition.Start, events);
+        var stream = await store.AppendEventsAsync(new("order-123"), StreamPosition.Start, events);
 
         Assert.NotEmpty(stream);
         Assert.NotEqual(stream.First().EventId, default);

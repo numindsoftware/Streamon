@@ -6,6 +6,12 @@ public static class EventExtensions
 {
     private static readonly Dictionary<Type, MemberInfo> EventIdMembersMap = [];
 
+    public static StreamPosition CurrentPosition(this IEnumerable<Event> events) =>
+        events.Any() ? events.Max(static e => e.StreamPosition) : StreamPosition.Start;
+
+    public static StreamPosition GlobalPosition(this IEnumerable<Event> events) =>
+        events.Any() ? events.Max(static e => e.GlobalPosition) : StreamPosition.Start;
+
     public static EventId GetEventId(this object @event)
     {
         if (@event is IHasEventId indentifiable) return indentifiable.EventId;
@@ -33,7 +39,7 @@ public static class EventExtensions
         };
     }
 
-    public static EventEnvelope ToEventEnvelope(this object @event, StreamId streamId, BatchId batchId, StreamPosition position, StreamPosition globalPosition, EventMetadata? metadata) =>
+    public static Event ToEventEnvelope(this object @event, StreamId streamId, BatchId batchId, StreamPosition position, StreamPosition globalPosition, EventMetadata? metadata) =>
         new(
             streamId,
             @event.GetEventId(),

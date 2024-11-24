@@ -14,11 +14,11 @@ public class InMemoryStreamStoreTests
         StreamId streamId = new("order-123");
         IEnumerable<object> events = [OrderEvents.OrderCaptured, OrderEvents.OrderConfirmed];
 
-        var stream = await eventStore.AppendAsync(streamId, StreamPosition.Start, events);
+        var stream = await eventStore.AppendEventsAsync(streamId, StreamPosition.Start, events);
 
         Assert.NotEmpty(stream);
         Assert.NotEqual(stream.First().EventId, default);
-        Assert.Equal(stream.GlobalPosition, stream.CurrentPosition);
+        Assert.Equal(stream.GlobalPosition(), stream.CurrentPosition());
     }
 
     [Fact]
@@ -30,9 +30,8 @@ public class InMemoryStreamStoreTests
 
         var provisioner = provider.GetRequiredService<IStreamStoreProvisioner>();
         var store = await provisioner.CreateStoreAsync();
-        var stream = await store.AppendAsync(new StreamId("order-123"), StreamPosition.Start, [OrderEvents.OrderCaptured]);
+        var stream = await store.AppendEventsAsync(new StreamId("order-123"), StreamPosition.Start, [OrderEvents.OrderCaptured]);
         Assert.NotEmpty(stream);
         Assert.NotEqual(stream.First().EventId, default);
     }
 }
-

@@ -4,7 +4,7 @@ namespace Streamon.Azure.TableStorage;
 
 internal static class EventExtensions
 {
-    public static EventEnvelope ToEventEnvelope(this EventEntity eventEntity, IStreamTypeProvider typeProvider) =>
+    public static Event ToEventEnvelope(this EventEntity eventEntity, IStreamTypeProvider typeProvider) =>
         new(
             StreamId.From(eventEntity.PartitionKey),
             EventId.From(eventEntity.EventId),
@@ -15,7 +15,7 @@ internal static class EventExtensions
             typeProvider.ResolveEvent(eventEntity.Type, eventEntity.Data),
             typeProvider.ResolveMetadata(eventEntity.Metadata));
 
-    public static IEnumerable<EventEnvelope> ToEventEnvelopes(this IEnumerable<EventEntity> eventEntities, TableStreamStoreOptions options) =>
+    public static IEnumerable<Event> ToEventEnvelopes(this IEnumerable<EventEntity> eventEntities, TableStreamStoreOptions options) =>
         eventEntities
             .Where(e => e.RowKey.StartsWith(options.EventEntityRowKeyPrefix))
             .Select(e => e.ToEventEnvelope(options.StreamTypeProvider));
@@ -26,7 +26,7 @@ internal static class EventExtensions
         return new EventEntity
         {
             PartitionKey = streamId.Value,
-            RowKey = $"{options.EventEntityRowKeyPrefix}{position.Value:000000000000000000}", //$"{options.EventEntityRowKeyPrefix}{eventId}",
+            RowKey = $"{options.EventEntityRowKeyPrefix}{position.Value:000000000000000000}",
             Sequence = position.Value,
             GlobalSequence = globalPosition.Value,
             EventId = eventId.Value,

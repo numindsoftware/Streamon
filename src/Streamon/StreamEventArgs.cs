@@ -1,6 +1,6 @@
 ﻿namespace Streamon;
 
-public class StreamEventArgs(Stream stream) : EventArgs
+public class StreamEventArgs(IEnumerable<Event> events) : EventArgs
 {
-    public Stream Stream { get; } = stream;
+    public IEnumerable<Event> Events { get; } = events;
 }

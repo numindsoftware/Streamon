@@ -6,7 +6,7 @@ namespace Streamon.Azure.TableStorage.Subscription;
 
 internal class TableSubscriptionStreamReader(TableClient tableClient, TableStreamStoreOptions options) : ISubscriptionStreamReader
 {
-    public async IAsyncEnumerable<EventEnvelope> FetchAsync(Checkpoint fromCheckpoint, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<Event> FetchAsync(Checkpoint fromCheckpoint, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         await foreach (var eventEntity in tableClient.QueryAsync<EventEntity>(e => e.RowKey != options.StreamEntityRowKey && e.GlobalSequence >= fromCheckpoint.Position, cancellationToken: cancellationToken))
         {

@@ -39,7 +39,7 @@ public class TableStreamStoreOptions(IStreamTypeProvider streamTypeProvider)
     /// <summary>
     /// Set a delegate to be called when events are appended to a stream.
     /// </summary>
-    public Action<Stream> OnEventsAppended { get; set; } = _ => { };
+    public Action<IEnumerable<Event>> OnEventsAppended { get; set; } = _ => { };
     /// <summary>
     /// Set a delegate to be called when a stream is deleted.
     /// </summary>

@@ -7,7 +7,7 @@ internal class CosmosDbStreamStore(Container container, CosmosDbStreamStoreOptio
     public event EventHandler<StreamEventArgs>? EventsAppended;
     public event EventHandler<StreamIdEventArgs>? StreamDeleted;
 
-    public async Task<Stream> AppendAsync(StreamId streamId, StreamPosition expectedPosition, IEnumerable<object> events, EventMetadata? metadata = null, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Event>> AppendEventsAsync(StreamId streamId, StreamPosition expectedPosition, IEnumerable<object> events, EventMetadata? metadata = null, CancellationToken cancellationToken = default)
     {
         double requestCharge = 0;
         var streamResponse = await container.ReadItemAsync<StreamDocument>(streamId.Value, new PartitionKey(streamId.Value), cancellationToken: cancellationToken);
@@ -23,7 +23,7 @@ internal class CosmosDbStreamStore(Container container, CosmosDbStreamStoreOptio
             throw new StreamConcurrencyException(expectedPosition, streamDocument.Position);
         }
 
-        var eventEnvelopes = new List<EventEnvelope>();
+        var eventEnvelopes = new List<Event>();
         var transaction = container.CreateTransactionalBatch(new PartitionKey(streamId.Value));
         var batchId = BatchId.New();
         foreach (var @event in events)
@@ -46,16 +46,15 @@ internal class CosmosDbStreamStore(Container container, CosmosDbStreamStoreOptio
                 eventTypeInfo.Data,
                 metadata);
             transaction.CreateItem(eventDocument);
-            eventEnvelopes.Add(new EventEnvelope(streamId, eventId, eventDocument.Position, eventDocument.GlobalPosition, DateTimeOffset.Now, batchId, @event, metadata));
+            eventEnvelopes.Add(new Event(streamId, eventId, eventDocument.Position, eventDocument.GlobalPosition, DateTimeOffset.Now, batchId, @event, metadata));
         }
 
         transaction.ReplaceItem(streamId.Value, streamDocument);
         var batchResponse = await transaction.ExecuteAsync(cancellationToken);
         requestCharge += batchResponse.RequestCharge;
         if (!batchResponse.IsSuccessStatusCode) throw new CosmosDbOperationException($"Could not save events batch with error code: {batchResponse.StatusCode}");
-        Stream stream = new(streamId, streamDocument.GlobalPosition, eventEnvelopes);
-        OnEventsAppended(new(streamId, streamDocument.Position, eventEnvelopes));
-        return stream;
+        OnEventsAppended(eventEnvelopes);
+        return eventEnvelopes;
     }
 
     public async Task<long> DeleteStreamAsync(StreamId streamId, StreamPosition expectedPosition, CancellationToken cancellationToken = default)
@@ -87,34 +86,34 @@ internal class CosmosDbStreamStore(Container container, CosmosDbStreamStoreOptio
         return streamDocument.Position.Value;
     }
 
-    public async Task<Stream> FetchAsync(StreamId streamId, StreamPosition startPosition = default, StreamPosition endPosition = default, CancellationToken cancellationToken = default)
+    public Task<IEnumerable<Event>> FetchEventsAsync(StreamId streamId, StreamPosition startPosition = default, StreamPosition endPosition = default, CancellationToken cancellationToken = default)
     {
         endPosition = endPosition == default ? StreamPosition.End : endPosition;
 
-        var feedIterator = container.GetItemQueryIterator<StreamDocument>(new QueryDefinition("SELECT * FROM c WHERE c.id = @id").WithParameter("@id", streamId.Value));
-        double requestCharge = 0;
-        while (feedIterator.HasMoreResults)
-        {
-            var response = await feedIterator.ReadNextAsync(cancellationToken);
-            requestCharge += response.RequestCharge;
-            foreach (var document in response)
-            {
+        //var feedIterator = container.GetItemQueryIterator<StreamDocument>(new QueryDefinition("SELECT * FROM c WHERE c.id = @id").WithParameter("@id", streamId.Value));
+        //double requestCharge = 0;
+        //while (feedIterator.HasMoreResults)
+        //{
+        //    var response = await feedIterator.ReadNextAsync(cancellationToken);
+        //    requestCharge += response.RequestCharge;
+        //    foreach (var document in response)
+        //    {
                 
-            }
+        //    }
 
-            var stream = response.FirstOrDefault();
-            if (stream != null)
-            {
-            }
-        }
+        //    var stream = response.FirstOrDefault();
+        //    if (stream != null)
+        //    {
+        //    }
+        //}
 
-        return new Stream(streamId, startPosition, []);
+        throw new NotImplementedException();
     }
 
-    protected virtual void OnEventsAppended(Stream stream)
+    protected virtual void OnEventsAppended(IEnumerable<Event> events)
     {
-        options.OnEventsAppended?.Invoke(stream);
-        EventsAppended?.Invoke(this, new(stream));
+        options.OnEventsAppended?.Invoke(events);
+        EventsAppended?.Invoke(this, new(events));
     }
     protected virtual void OnStreamDeleted(StreamId streamId)
     {

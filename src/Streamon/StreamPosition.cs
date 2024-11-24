@@ -3,6 +3,7 @@
 namespace Streamon;
 
 public readonly struct StreamPosition :
+    IIdentity<StreamPosition, long>,
     IEquatable<StreamPosition>,
     IAdditionOperators<StreamPosition, StreamPosition, StreamPosition>,
     IIncrementOperators<StreamPosition>,
@@ -19,9 +20,6 @@ public readonly struct StreamPosition :
     public static readonly StreamPosition Any = new(-1);
     public static readonly StreamPosition Start = new(0);
     public static readonly StreamPosition End = new(long.MaxValue);
-
-    public static explicit operator long(StreamPosition id) => id.Value;
-    public static explicit operator StreamPosition(long value) => new(value);
 
     public static StreamPosition operator +(StreamPosition left, StreamPosition right) =>
         left.Value == End.Value && right.Value == End.Value ? End : // avoids overflow, logically adding two ends is still end

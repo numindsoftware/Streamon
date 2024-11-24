@@ -2,7 +2,7 @@
 
 public interface IStreamReader
 {
-    Task<Stream> FetchAsync(
+    Task<IEnumerable<Event>> FetchEventsAsync(
         StreamId streamId, 
         StreamPosition startPosition = default, 
         StreamPosition endPosition = default, 

@@ -15,7 +15,7 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
 
         var provisioner = provider.GetRequiredService<IStreamStoreProvisioner>();
         var store = await provisioner.CreateStoreAsync("TestCreated");
-        var stream = await store.AppendAsync(new StreamId("order-123"), StreamPosition.Start, [OrderEvents.OrderCaptured]);
+        var stream = await store.AppendEventsAsync(new StreamId("order-123"), StreamPosition.Start, [OrderEvents.OrderCaptured]);
         Assert.NotEmpty(stream);
         Assert.NotEqual(stream.First().EventId, default);
     }
@@ -30,7 +30,7 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
             OrderEvents.OrderConfirmed,
             OrderEvents.OrderShipped
         ];
-        var stream = await store.AppendAsync(new StreamId("order-123"), StreamPosition.Start, events);
+        var stream = await store.AppendEventsAsync(new StreamId("order-123"), StreamPosition.Start, events);
         Assert.NotEmpty(stream);
         Assert.Equal(events.Count(), stream.Count());
     }
@@ -51,7 +51,7 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
             OrderEvents.OrderCancelled,
             OrderEvents.OrderCancelled
         ];
-        var stream = await store.AppendAsync(new StreamId("order-124"), StreamPosition.Start, events);
+        var stream = await store.AppendEventsAsync(new StreamId("order-124"), StreamPosition.Start, events);
         Assert.NotEmpty(stream);
         Assert.Equal(events.Count(), stream.Count());
     }
@@ -67,14 +67,14 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
             new TestEvent2("3"),
             new TestEvent1("2") // this should fail
         ];
-        await Assert.ThrowsAsync<DuplicateEventException>(() => store.AppendAsync(new StreamId("order-125"), StreamPosition.Start, events));
+        await Assert.ThrowsAsync<DuplicateEventException>(() => store.AppendEventsAsync(new StreamId("order-125"), StreamPosition.Start, events));
     }
 
     [Fact, Priority(6)]
     public async Task ReadsFullStreamFromStoreEvents()
     {
         var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync(nameof(IntegrationStreamTests));
-        var readStream = await store.FetchAsync(new StreamId("order-124"));
+        var readStream = await store.FetchEventsAsync(new StreamId("order-124"));
         Assert.NotEmpty(readStream);
         Assert.Equal(9, readStream.Count());
     }

@@ -9,7 +9,7 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
     public event EventHandler<StreamEventArgs>? EventsAppended;
     public event EventHandler<StreamIdEventArgs>? StreamDeleted;
 
-    public async Task<Stream> FetchAsync(StreamId streamId, StreamPosition startPosition = default, StreamPosition endPosition = default, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Event>> FetchEventsAsync(StreamId streamId, StreamPosition startPosition = default, StreamPosition endPosition = default, CancellationToken cancellationToken = default)
     {
         endPosition = endPosition == default ? StreamPosition.End : endPosition;
         
@@ -23,11 +23,10 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
         await foreach (var entity in tableClient.QueryAsync<EventEntity>(eventsQuery, cancellationToken: cancellationToken)) entities.Add(entity);
         if (entities.Count == 0) throw new StreamNotFoundException(streamId);
         
-        var eventEnvelopes = entities.ToEventEnvelopes(options);
-        return new Stream(streamId, StreamPosition.From(streamEntityResponse.Value!.Sequence), [.. eventEnvelopes]);
+        return entities.ToEventEnvelopes(options);
     }
 
-    public async Task<Stream> AppendAsync(StreamId streamId, StreamPosition expectedPosition, IEnumerable<object> events, EventMetadata? metadata = null, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Event>> AppendEventsAsync(StreamId streamId, StreamPosition expectedPosition, IEnumerable<object> events, EventMetadata? metadata = null, CancellationToken cancellationToken = default)
     {
         if (expectedPosition == StreamPosition.End) throw new StreamPositionOutOfRangeException(expectedPosition, $"Can't append events past the end position.");
         if (events.Count() * 2 >= options.TransactionBatchSize + (options.TransactionBatchSize % 2) - 2) throw new BatchSizeExceededException(events.Count(), options.TransactionBatchSize, $"The number of events to append exceeds the maximum batch size of {options.TransactionBatchSize}.");
@@ -42,7 +41,7 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
 
         var batchId = BatchId.New();
         List<TableTransactionAction> streamTransactions = [];
-        List<EventEnvelope> eventEnvelopes = [];
+        List<Event> eventEnvelopes = [];
         foreach (var @event in events)
         {
             currentPosition = currentPosition.Next();
@@ -73,7 +72,7 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
         {
             throw new TableStorageOperationException($"An error occurred while saving events. {ex.Message}", ex);
         }
-        return new Stream(streamId, globalPosition, eventEnvelopes);
+        return eventEnvelopes;
     }
 
     public async Task<long> DeleteStreamAsync(StreamId streamId, StreamPosition expectedPosition, CancellationToken cancellationToken = default)
@@ -109,10 +108,10 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
         }
     }
 
-    protected virtual void OnEventsAppended(Stream stream)
+    protected virtual void OnEventsAppended(IEnumerable<Event> events)
     {
-        options.OnEventsAppended?.Invoke(stream);
-        EventsAppended?.Invoke(this, new(stream));
+        options.OnEventsAppended?.Invoke(events);
+        EventsAppended?.Invoke(this, new(events));
     }
     protected virtual void OnStreamDeleted(StreamId streamId)
     {
@@ -135,6 +134,13 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
         if (batch.Count > 0) yield return batch;
     }
 
+    /// <summary>
+    /// This is extremely inneficient, a full table scan is performed to get the latest global position.
+    /// A better approach would be to store the latest global position in a separate entity and update it on each append.
+    /// </summary>
+    /// <param name="globalPosition"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     private async Task<long> FetchLatestGlobalPositionAsync(long globalPosition, CancellationToken cancellationToken = default)
     {
         List<StreamEntity> entities = [];

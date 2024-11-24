@@ -1,6 +1,6 @@
 ﻿namespace Streamon;
 
-public record EventEnvelope(
+public record Event(
     StreamId StreamId,
     EventId EventId,
     StreamPosition StreamPosition,

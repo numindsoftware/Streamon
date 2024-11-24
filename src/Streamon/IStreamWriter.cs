@@ -2,7 +2,7 @@
 
 public interface IStreamWriter
 {
-    Task<Stream> AppendAsync(
+    Task<IEnumerable<Event>> AppendEventsAsync(
         StreamId streamId,
         StreamPosition expectedPosition, 
         IEnumerable<object> events,
