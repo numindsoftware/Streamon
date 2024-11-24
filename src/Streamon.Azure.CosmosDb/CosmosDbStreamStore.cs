@@ -46,7 +46,7 @@ internal class CosmosDbStreamStore(Container container, CosmosDbStreamStoreOptio
                 eventTypeInfo.Data,
                 metadata);
             transaction.CreateItem(eventDocument);
-            eventEnvelopes.Add(new EventEnvelope(eventId, eventDocument.Position, eventDocument.GlobalPosition, DateTimeOffset.Now, batchId, @event, metadata));
+            eventEnvelopes.Add(new EventEnvelope(streamId, eventId, eventDocument.Position, eventDocument.GlobalPosition, DateTimeOffset.Now, batchId, @event, metadata));
         }
 
         transaction.ReplaceItem(streamId.Value, streamDocument);

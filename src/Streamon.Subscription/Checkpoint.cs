@@ -1,3 +1,3 @@
 ﻿namespace Streamon.Subscription;
 
-public record Checkpoint(string SubscriptionId, long Position, DateTimeOffset LastModifiedTime = default);
+public readonly record struct Checkpoint(string SubscriptionId, long Position, DateTimeOffset LastModifiedTime = default);

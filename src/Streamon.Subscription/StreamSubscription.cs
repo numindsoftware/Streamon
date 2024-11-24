@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace Streamon.Subscription;
 
 #pragma warning disable CS9113 // Parameter is unread.
-internal class StreamSubscription(IServiceProvider serviceProvider)
+internal class StreamSubscription(SubscriptionId subscriptionId, ICheckpointStore checkpointStore, ISubscriptionStreamReader subscriptionStreamReader)
 #pragma warning restore CS9113 // Parameter is unread.
 {
     private readonly ConcurrentDictionary<Type, Type> _registeredHandlers = [];
@@ -18,6 +18,20 @@ internal class StreamSubscription(IServiceProvider serviceProvider)
     {
         _registeredHandlers.TryAdd(typeof(TEvent), typeof(THandler));
         return this;
+    }
+
+    public async Task PollAsync(CancellationToken cancellationToken = default)
+    {
+        var lastCheckpoint = await checkpointStore.GetCheckpointAsync(subscriptionId, cancellationToken);
+        await foreach (var stream in subscriptionStreamReader.FetchAsync(lastCheckpoint, cancellationToken))
+        {
+
+            
+            //foreach (var @event in events)
+            //{
+            //    await DispatchAsync(@event);
+            //}
+        }
     }
 
     public Task DispatchAsync(object @event)

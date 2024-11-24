@@ -13,7 +13,7 @@ namespace Streamon.Azure.TableStorage;
 internal class TableCheckpointStore(TableClient tableClient, TableCheckpointStoreOptions options) : ICheckpointStore
 #pragma warning restore CS9113 // Parameter is unread.
 {
-    public Task<Checkpoint> GetCheckpointAsync(string subscriptionId)
+    public Task<Checkpoint> GetCheckpointAsync(SubscriptionId subscriptionId, CancellationToken cancellationToken = default)
     {
         //var response = await tableClient.QueryAsync<CheckpointEntity>(c => c.PartitionKey == subscriptionId).;
         //if (response.HasValue) throw new CheckpointNotFoundException(subscriptionId);
@@ -21,7 +21,7 @@ internal class TableCheckpointStore(TableClient tableClient, TableCheckpointStor
         throw new NotImplementedException();
     }
 
-    public Task SetCheckpointAsync(Checkpoint checkpoint)
+    public Task SetCheckpointAsync(Checkpoint checkpoint, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }

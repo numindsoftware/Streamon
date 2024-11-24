@@ -4,17 +4,21 @@ namespace Streamon.Azure.TableStorage;
 
 internal static class EventExtensions
 {
+    public static EventEnvelope ToEventEnvelope(this EventEntity eventEntity, IStreamTypeProvider typeProvider) =>
+        new(
+            StreamId.From(eventEntity.PartitionKey),
+            EventId.From(eventEntity.EventId),
+            StreamPosition.From(eventEntity.Sequence),
+            StreamPosition.From(eventEntity.GlobalSequence),
+            eventEntity.CreatedOn,
+            BatchId.From(eventEntity.BatchId),
+            typeProvider.ResolveEvent(eventEntity.Type, eventEntity.Data),
+            typeProvider.ResolveMetadata(eventEntity.Metadata));
+
     public static IEnumerable<EventEnvelope> ToEventEnvelopes(this IEnumerable<EventEntity> eventEntities, TableStreamStoreOptions options) =>
         eventEntities
             .Where(e => e.RowKey.StartsWith(options.EventEntityRowKeyPrefix))
-            .Select(e => new EventEnvelope(
-                EventId.From(e.EventId), 
-                StreamPosition.From(e.Sequence),
-                StreamPosition.From(e.GlobalSequence),
-                e.CreatedOn,
-                BatchId.From(e.BatchId),
-                options.StreamTypeProvider.ResolveEvent(e.Type, e.Data),
-                options.StreamTypeProvider.ResolveMetadata(e.Metadata)));
+            .Select(e => e.ToEventEnvelope(options.StreamTypeProvider));
 
     public static ITableEntity ToEventEntity(this object @event, EventId eventId, StreamId streamId, BatchId batchId, StreamPosition position, StreamPosition globalPosition, EventMetadata? metadata, IStreamTypeProvider streamTypeProvider, TableStreamStoreOptions options)
     {
@@ -22,7 +26,7 @@ internal static class EventExtensions
         return new EventEntity
         {
             PartitionKey = streamId.Value,
-            RowKey = $"{options.EventEntityRowKeyPrefix}{eventId}",
+            RowKey = $"{options.EventEntityRowKeyPrefix}{position.Value:000000000000000000}", //$"{options.EventEntityRowKeyPrefix}{eventId}",
             Sequence = position.Value,
             GlobalSequence = globalPosition.Value,
             EventId = eventId.Value,
@@ -45,5 +49,9 @@ internal static class EventExtensions
             CreatedOn = DateTimeOffset.UtcNow
         };
 
-    public static string ToSnapshotEntityRowKey(this Type projectionType, TableStreamStoreOptions options) => $"{options.SnapshotEntityPrefix}{projectionType.Name}";
+    public static string ToEventIdEntityRowKey(this EventId eventId, TableStreamStoreOptions options) => 
+        $"{options.EventIdEntityRowKeyPrefix}{eventId.Value:0}";
+
+    public static string ToSnapshotEntityRowKey(this Type projectionType, TableStreamStoreOptions options) => 
+        $"{options.SnapshotEntityPrefix}{projectionType.Name}";
 }
