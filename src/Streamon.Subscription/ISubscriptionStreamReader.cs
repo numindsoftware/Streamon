@@ -1,8 +1,7 @@
-﻿using System.Runtime.CompilerServices;
-
-namespace Streamon.Subscription;
+﻿namespace Streamon.Subscription;
 
 public interface ISubscriptionStreamReader
 {
-    public IAsyncEnumerable<Event> FetchAsync(Checkpoint fromCheckpoint, CancellationToken cancellationToken = default);
+    public IAsyncEnumerable<Event> FetchAsync(StreamPosition fromPosition, CancellationToken cancellationToken = default);
+    //public Task<StreamPosition> GetLastGlobalPositionAsync(CancellationToken cancellationToken = default);
 }

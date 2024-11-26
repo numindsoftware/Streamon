@@ -2,7 +2,7 @@
 
 public class TableStreamStoreOptions(IStreamTypeProvider streamTypeProvider)
 {
-    public string TableName { get; set; } = nameof(Streamon);
+    public string TableName { get; set; } = "StreamonStreamStore";
     public IStreamTypeProvider StreamTypeProvider { get; set; } = streamTypeProvider;
     /// <summary>
     /// Disabling soft delete will have both performance penalties and will make it impossible to recover deleted streams.

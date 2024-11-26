@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <PackageReference Include="xunit.core" Version="2.9.2" />
+    <PackageReference Include="xunit.core" />
   </ItemGroup>
 
 </Project>

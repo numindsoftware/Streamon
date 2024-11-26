@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace Streamon.Subscription;
 
-public interface IEventConsumeContext
+public interface IEventConsumer
 {
+    Task DispatchAsync<T>(EventConsumeContext<T> context, CancellationToken cancellationToken = default);
 }

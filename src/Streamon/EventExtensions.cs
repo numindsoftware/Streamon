@@ -39,7 +39,7 @@ public static class EventExtensions
         };
     }
 
-    public static Event ToEventEnvelope(this object @event, StreamId streamId, BatchId batchId, StreamPosition position, StreamPosition globalPosition, EventMetadata? metadata) =>
+    public static Event ToEvent(this object @event, StreamId streamId, BatchId batchId, StreamPosition position, StreamPosition globalPosition, EventMetadata? metadata) =>
         new(
             streamId,
             @event.GetEventId(),

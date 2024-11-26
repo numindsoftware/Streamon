@@ -34,7 +34,7 @@ public class MemoryStreamStore : IStreamStore
         {
             if (expectedPosition == StreamPosition.Start || expectedPosition == StreamPosition.Any)
             {
-                var newEvents = ConvertToEnvelopes(streamId, BatchId.New(), StreamPosition.Start, GlobalEventPosition, events, metadata);
+                var newEvents = ConvertToEvents(streamId, BatchId.New(), StreamPosition.Start, GlobalEventPosition, events, metadata);
                 _streams.Add(streamId, [.. newEvents]);
                 OnEventsAppended(newEvents);
                 return Task.FromResult(newEvents);
@@ -47,7 +47,7 @@ public class MemoryStreamStore : IStreamStore
         else if (lastEvent.StreamPosition != expectedPosition) throw new StreamConcurrencyException(expectedPosition, lastEvent.StreamPosition);
         else
         {
-            var newEvents = ConvertToEnvelopes(streamId, BatchId.New(), lastEvent?.StreamPosition ?? StreamPosition.Start, GlobalEventPosition, events, metadata);
+            var newEvents = ConvertToEvents(streamId, BatchId.New(), lastEvent?.StreamPosition ?? StreamPosition.Start, GlobalEventPosition, events, metadata);
             _streams[streamId].AddRange(newEvents);
             return Task.FromResult(newEvents);
         }
@@ -59,7 +59,7 @@ public class MemoryStreamStore : IStreamStore
     private static EventMetadata? ExtractMetadata(object @event) =>
         @event is IHasEventMetadata metadata ? metadata.Metadata : default;
 
-    private static IEnumerable<Event> ConvertToEnvelopes(StreamId streamId, BatchId batchId, StreamPosition startingSequence, StreamPosition globalPosition, IEnumerable<object> events, EventMetadata? metadata) =>
+    private static IEnumerable<Event> ConvertToEvents(StreamId streamId, BatchId batchId, StreamPosition startingSequence, StreamPosition globalPosition, IEnumerable<object> events, EventMetadata? metadata) =>
         events.Select((e, i) => new Event(streamId, EventId.New(), StreamPosition.From(startingSequence.Value + i), StreamPosition.From(globalPosition.Value + i), DateTimeOffset.Now, batchId, e, metadata ?? ExtractMetadata(e)));
 
     private StreamPosition GlobalEventPosition { get => StreamPosition.From(Math.Max(_streams.SelectMany(s => s.Value).Count() - 1, 0)); }

@@ -2,6 +2,6 @@
 
 public interface ICheckpointStore
 {
-    public Task<Checkpoint> GetCheckpointAsync(SubscriptionId subscriptionId, CancellationToken cancellationToken = default);
-    public Task SetCheckpointAsync(Checkpoint checkpoint, CancellationToken cancellationToken = default);
+    public Task<StreamPosition> GetCheckpointAsync(SubscriptionId subscriptionId, CancellationToken cancellationToken = default);
+    public Task SetCheckpointAsync(SubscriptionId subscriptionId, StreamPosition position, CancellationToken cancellationToken = default);
 }

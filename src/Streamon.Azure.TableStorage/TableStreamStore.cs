@@ -23,7 +23,7 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
         await foreach (var entity in tableClient.QueryAsync<EventEntity>(eventsQuery, cancellationToken: cancellationToken)) entities.Add(entity);
         if (entities.Count == 0) throw new StreamNotFoundException(streamId);
         
-        return entities.ToEventEnvelopes(options);
+        return entities.ToEvents(options);
     }
 
     public async Task<IEnumerable<Event>> AppendEventsAsync(StreamId streamId, StreamPosition expectedPosition, IEnumerable<object> events, EventMetadata? metadata = null, CancellationToken cancellationToken = default)
@@ -46,7 +46,7 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
         {
             currentPosition = currentPosition.Next();
             globalPosition = globalPosition.Next();
-            var eventEnvelope = @event.ToEventEnvelope(streamId, batchId, currentPosition, globalPosition, metadata);
+            var eventEnvelope = @event.ToEvent(streamId, batchId, currentPosition, globalPosition, metadata);
             var eventEntity = @event.ToEventEntity(eventEnvelope.EventId, streamId, batchId, currentPosition, globalPosition, metadata, options.StreamTypeProvider, options);
             EventIdEntity eventIdEntity = new() { PartitionKey = streamId.Value, RowKey = eventEnvelope.EventId.ToEventIdEntityRowKey(options), Sequence = currentPosition.Value };
             streamTransactions.Add(new(TableTransactionActionType.Add, eventEntity));

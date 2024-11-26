@@ -6,9 +6,10 @@ namespace Streamon.Azure.TableStorage;
 
 internal static class TableClientExtensions
 {
-    public static void ThrowOnError(this Response response, string? optionalFailureMessage = default)
+    public static Response ThrowOnError(this Response response, string? optionalFailureMessage = default)
     {
         if (response.Status >= (int)HttpStatusCode.BadRequest) throw new TableStorageOperationException(optionalFailureMessage);
+        return response;
     }
 
     public static async Task<bool> CheckTableExistsAsync(this TableServiceClient tableClient, string name, CancellationToken cancellationToken = default) =>
