@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Streamon.Tests.Fixtures;
 
 namespace Streamon.Azure.CosmosDb.Tests;

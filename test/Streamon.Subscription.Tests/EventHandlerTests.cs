@@ -11,17 +11,4 @@ public class EventHandlerTests
         TestEventHandler eventHandler = new();
         await eventHandler.HandleEventAsync(context);
     }
-
-    private class TestEventHandler : EventHandler
-    {
-        public TestEventHandler()
-        {
-            On<OrderCaptured>((context, cancellationToken) =>
-            {
-                Assert.Equal(StreamId.From("order-123"), context.StreamId);
-
-                return ValueTask.CompletedTask;
-            });
-        }
-    }
 }

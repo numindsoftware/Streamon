@@ -10,6 +10,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.editorconfig = .editorconfig
 		.gitattributes = .gitattributes
 		.gitignore = .gitignore
+		.github\workflows\ci.yml = .github\workflows\ci.yml
 		Directory.Build.props = Directory.Build.props
 		LICENSE = LICENSE
 		README.md = README.md
@@ -31,9 +32,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Streamon.Azure.CosmosDb.Tes
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Streamon.Tests.Fixtures", "test\Streamon.Tests.Fixtures\Streamon.Tests.Fixtures.csproj", "{C57ECB2B-A8C8-472E-9D42-C31FBD05D73F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Streamon.Subscription", "src\Streamon.Subscription\Streamon.Subscription.csproj", "{40D47D40-C5E3-4328-B1A8-AD7C7188BF32}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Streamon.Subscription", "src\Streamon.Subscription\Streamon.Subscription.csproj", "{40D47D40-C5E3-4328-B1A8-AD7C7188BF32}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Streamon.Subscription.Tests", "test\Streamon.Subscription.Tests\Streamon.Subscription.Tests.csproj", "{F8F31442-7C1D-4738-8C9C-90B7525F7121}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Streamon.Subscription.Tests", "test\Streamon.Subscription.Tests\Streamon.Subscription.Tests.csproj", "{F8F31442-7C1D-4738-8C9C-90B7525F7121}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

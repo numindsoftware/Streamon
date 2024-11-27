@@ -1,6 +1,6 @@
 ﻿namespace Streamon.Subscription;
 
-internal class StreamSubscription(SubscriptionId subscriptionId, IEventHandlerResolver eventHandlerResolver, ICheckpointStore checkpointStore, ISubscriptionStreamReader subscriptionStreamReader)
+public class StreamSubscription(SubscriptionId subscriptionId, IEventHandlerResolver eventHandlerResolver, ICheckpointStore checkpointStore, ISubscriptionStreamReader subscriptionStreamReader)
 {
     private readonly Dictionary<Type, IEventHandler?> _eventHandlers = [];
 
