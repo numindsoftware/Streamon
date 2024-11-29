@@ -24,7 +24,7 @@ jobs:
     - name: Pack
       run: dotnet pack --configuration Release /p:Version=${VERSION} --no-build --output .
     - name: Push
-      run: 
+      run: |
         dotnet nuget push Streamon.${VERSION}.nupkg --source https://api.nuget.org/v3/index.json --api-key ${NUGET_PUBLISH_KEY} --skip-duplicate
         dotnet nuget push Streamon.Subscription.${VERSION}.nupkg --source https://api.nuget.org/v3/index.json --api-key ${NUGET_PUBLISH_KEY} --skip-duplicate
         dotnet nuget push Streamon.Azure.TableStorage.${VERSION}.nupkg --source https://api.nuget.org/v3/index.json --api-key ${NUGET_PUBLISH_KEY} --skip-duplicate
