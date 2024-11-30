@@ -4,13 +4,11 @@
 
 	<PropertyGroup>
 		<!-- Package Information -->
-		<Product>Streamon</Product>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/numindsoftware/Streamon</RepositoryUrl>
 		<PackageTags>es eventsourcing eventstore event-sourcing event-store event azure stream storage cosmosdb</PackageTags>
 		<PackageIcon>icon.png</PackageIcon>
 		<IncludeContentInPack>true</IncludeContentInPack>
-		<Description>Event streaming store platform for real-time data processing and analytics.</Description>
 
 		<!-- Licensing -->
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>

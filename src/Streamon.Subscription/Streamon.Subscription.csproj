@@ -1,5 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <ItemGroup>
+
+	<PropertyGroup>
+		<Product>Streamon.Subscription</Product>
+		<Description>Abstractions and common logic to provide subscribe to Streamon event streams.</Description>
+	</PropertyGroup>
+
+	<ItemGroup>
     <ProjectReference Include="..\Streamon\Streamon.csproj" />
   </ItemGroup>
+
 </Project>

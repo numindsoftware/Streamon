@@ -1,3 +1,8 @@
+![NuGet Version](https://img.shields.io/nuget/v/Streamon)
+![GitHub License](https://img.shields.io/github/license/numindsoftware/Streamon)
+[![.github/workflows/ci.yml](https://github.com/numindsoftware/Streamon/actions/workflows/ci.yml/badge.svg)](https://github.com/numindsoftware/Streamon/actions/workflows/ci.yml)
+[![.github/workflows/cd.yml](https://github.com/numindsoftware/Streamon/actions/workflows/cd.yml/badge.svg)](https://github.com/numindsoftware/Streamon/actions/workflows/cd.yml)
+
 # Streamon
 
 Event streaming store platform for real-time data processing and analytics.
@@ -5,7 +10,7 @@ Event streaming store platform for real-time data processing and analytics.
 ## Providers
 * In Memory
 * [Azure Table Storage](https://learn.microsoft.com/en-us/azure/storage/tables/table-storage-overview)
-* [Azure Cosmos DB](https://developer.azurecosmosdb.com/tools) (_in progress_)
+* [Azure Cosmos DB](https://developer.azurecosmosdb.com/tools) (_in progress_, can be used in CosmosDb still by using the Table Api)
 
 ## Features
 
@@ -15,13 +20,13 @@ Event streaming store platform for real-time data processing and analytics.
 * Flexible stream sorage naming and partitioning, e.g. allowing for multitenancy by using one stream per tenant
 * Optimistic concurrency control
 * Soft and hard deletion modes
-* Global event positioning
+* Global event positioning & tracking
+* Subscriptions
+* Snapshots and Checkpoints
 
 ## To Do's
 
 * Telemetry
-* Snapshots and Checkpoints
-* Subscriptions
 * Relational Stores (Entity Framework?)
 * Claim Checks for large events
 * Stream Projections
@@ -70,5 +75,5 @@ Local testing and development of Github actions can be done using the [`act`](ht
 
 ## License
 
-MIT License
+[MIT License](LICENSE)
 

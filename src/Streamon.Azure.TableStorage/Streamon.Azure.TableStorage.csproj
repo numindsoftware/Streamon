@@ -1,6 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
+	<PropertyGroup>
+		<Product>Streamon.Azure.TableStorage</Product>
+		<Description>Azure Table Storage provider for Streamon.</Description>
+	</PropertyGroup>
+
+	<ItemGroup>
     <PackageReference Include="Azure.Data.Tables" />
     <PackageReference Include="System.Text.Json" />
   </ItemGroup>
