@@ -10,7 +10,7 @@ internal class TableSubscriptionStreamReader(TableClient tableClient, TableStrea
 
     public async IAsyncEnumerable<Event> FetchAsync(StreamPosition fromPosition, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        string minEventEntityRowKey = StreamPosition.Start.ToEventEntityRowKey(options), maxEventEntityRowKey = StreamPosition.End.ToEventEntityRowKey(options);
+        string minEventEntityRowKey = fromPosition.ToEventEntityRowKey(options), maxEventEntityRowKey = StreamPosition.End.ToEventEntityRowKey(options);
         await foreach (var eventEntity in tableClient.QueryAsync<EventEntity>(e => string.Compare(e.RowKey, minEventEntityRowKey) >= 0 && string.Compare(e.RowKey, maxEventEntityRowKey) <= 0 && e.GlobalSequence >= fromPosition.Value, cancellationToken: cancellationToken))
         {
             if (cancellationToken.IsCancellationRequested) yield break;

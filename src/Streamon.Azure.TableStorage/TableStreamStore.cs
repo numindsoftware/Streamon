@@ -17,10 +17,7 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
         if (!streamEntityResponse.HasValue) throw new StreamNotFoundException(streamId);
 
         List<EventEntity> entities = [];
-        // using plain odata filtering to only get event entities, this odata implementation does not support 'startsWith' operators so we use a range query trick as explained in:
-        // https://learn.microsoft.com/en-us/rest/api/storageservices/querying-tables-and-entities
-        var eventsQuery = $"PartitionKey eq '{streamId.Value}' and RowKey ge '{options.EventEntityRowKeyPrefix}0' and RowKey le '{options.EventEntityRowKeyPrefix}9' and Sequence ge {startPosition} and Sequence le {endPosition}";
-        await foreach (var entity in tableClient.QueryAsync<EventEntity>(eventsQuery, cancellationToken: cancellationToken)) entities.Add(entity);
+        await foreach (var entity in tableClient.QueryAsync<EventEntity>(e => e.PartitionKey == streamId.Value && e.Sequence >= startPosition.Value && e.Sequence <= endPosition.Value, cancellationToken: cancellationToken)) entities.Add(entity);
         if (entities.Count == 0) throw new StreamNotFoundException(streamId);
         
         return entities.ToEvents(options);

@@ -26,7 +26,7 @@ internal static class EventExtensions
         return new EventEntity
         {
             PartitionKey = streamId.Value,
-            RowKey = position.ToEventEntityRowKey(options),
+            RowKey = globalPosition.ToEventEntityRowKey(options),
             Sequence = position.Value,
             GlobalSequence = globalPosition.Value,
             EventId = eventId.Value,
