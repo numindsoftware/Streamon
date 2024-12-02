@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 
 namespace Streamon.Azure.TableStorage.Subscription;
 
-internal class TableSubscriptionStreamReader(TableClient tableClient, TableStreamStoreOptions options) : ISubscriptionStreamReader
+public class TableSubscriptionStreamReader(TableClient tableClient, TableStreamStoreOptions options) : ISubscriptionStreamReader
 {
     private readonly List<StreamEntity> _streamEntities = [];
 
@@ -18,6 +18,14 @@ internal class TableSubscriptionStreamReader(TableClient tableClient, TableStrea
             if (streamEntity.IsDeleted) continue;
             yield return eventEntity.ToEvent(options.StreamTypeProvider);
         }
+    }
+
+    public async Task<StreamPosition> GetLastGlobalPositionAsync(CancellationToken cancellationToken = default)
+    {
+        long globalPosition = 0;
+        await foreach (var page in tableClient.QueryAsync<StreamEntity>(e => e.RowKey == options.StreamEntityRowKey, cancellationToken: cancellationToken).AsPages())
+            globalPosition = Math.Max(page.Values.Select(e => e.GlobalSequence).DefaultIfEmpty(globalPosition).Max(), globalPosition);
+        return StreamPosition.From(globalPosition);
     }
 
     private async Task<StreamEntity> GetStreamEntityAsync(StreamId streamId, CancellationToken cancellationToken)

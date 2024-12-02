@@ -1,6 +1,5 @@
-﻿using Azure.Data.Tables;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Streamon.Tests.Fixtures;
-using System.Text.Json;
 using Testcontainers.Azurite;
 
 namespace Streamon.Azure.TableStorage.Tests;
@@ -18,16 +17,24 @@ public class ContainerFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
+        ServiceCollection services = new();
+
         await TestContainer.StartAsync();
-        TableServiceClient = new TableServiceClient(TestContainer.GetConnectionString());
-        var typeProvider = new StreamTypeProvider(new(JsonSerializerDefaults.Web));
-        typeProvider.RegisterTypes<OrderCaptured>();
-        TableStreamStoreProvisioner = new TableStreamStoreProvisioner(TableServiceClient!, new(typeProvider));
+
+
+        services.AddStreamon().AddTableStorageStreamStore(TestContainer.GetConnectionString(), options =>
+        {
+            options.StreamTypeProvider = new StreamTypeProvider().RegisterTypes<OrderCaptured>();
+        });
+
+        ServiceProvider = services.BuildServiceProvider();
+
+        TableStreamStoreProvisioner = ServiceProvider.GetRequiredService<IStreamStoreProvisioner>();
     }
+
+    public IServiceProvider ServiceProvider { get; private set; } = null!;
 
     public AzuriteContainer TestContainer { get; private set; }
 
-    public TableServiceClient TableServiceClient { get; private set; } = null!;
-
-    public TableStreamStoreProvisioner TableStreamStoreProvisioner { get; private set; } = null!;
+    public IStreamStoreProvisioner TableStreamStoreProvisioner { get; private set; } = null!;
 }

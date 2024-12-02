@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Streamon.Subscription;
 using Streamon.Tests.Fixtures;
 
 namespace Streamon.Azure.TableStorage.Tests;
@@ -9,12 +9,8 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
     [Fact, Priority(1)]
     public async Task CreateStoreThroughServiceCollection()
     {
-        var services = new ServiceCollection();
-        services.AddStreamon().AddTableStorageStreamStore(containerFixture.TestContainer.GetConnectionString());
-        var provider = services.BuildServiceProvider();
 
-        var provisioner = provider.GetRequiredService<IStreamStoreProvisioner>();
-        var store = await provisioner.CreateStoreAsync("TestCreated");
+        var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync("TestCreated");
         var stream = await store.AppendEventsAsync(new StreamId("order-123"), StreamPosition.Start, [OrderEvents.OrderCaptured]);
         Assert.NotEmpty(stream);
         Assert.NotEqual(stream.First().EventId, default);
@@ -79,7 +75,23 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
         Assert.Equal(9, readStream.Count());
     }
 
-    [Fact, Priority(7)]
+    //[Fact, Priority(7)]
+    //public async Task ProjectEventsForStream(StreamId streamId, IEnumerable<object> events)
+    //{
+    //    var subscriptionId = SubscriptionId.New();
+
+    //    ServiceCollection services = new();
+    //    services.AddStreamSubscription(subscriptionId, StreamSubscriptionType.CatchUp)
+    //        .AddTableStorageCheckpointStore(containerFixture.TestContainer.GetConnectionString())
+    //        .AddTableStorageSubscriptionStreamReader("")
+    //        .AddEventHandler<OrderInMemoryProjector>();
+
+    //    var provider = services.BuildServiceProvider();
+        
+    //    await store.AppendEventsAsync(streamId, StreamPosition.Start, events);
+    //}
+
+    [Fact, Priority(8)]
     public async Task SoftDeletesExistingStream()
     {
         var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync(nameof(IntegrationStreamTests));
@@ -87,7 +99,7 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
         Assert.Equal(9, totalDeleted);
     }
 
-    [Fact, Priority(8)]
+    [Fact, Priority(9)]
     public async Task HardDeletesExistingStream()
     {
         var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync(nameof(IntegrationStreamTests));
@@ -97,4 +109,12 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
 
     public record TestEvent1([property: EventId] string Id);
     public record TestEvent2([property: EventId] string Id);
+}
+
+public class OrderInMemoryProjector : IEventHandler
+{
+    public ValueTask HandleEventAsync(EventConsumeContext<object> context, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
 }

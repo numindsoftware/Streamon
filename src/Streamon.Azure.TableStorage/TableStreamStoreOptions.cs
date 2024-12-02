@@ -1,9 +1,8 @@
 ﻿namespace Streamon.Azure.TableStorage;
 
-public class TableStreamStoreOptions(IStreamTypeProvider streamTypeProvider)
+public class TableStreamStoreOptions
 {
-    public string TableName { get; set; } = "StreamonStreamStore";
-    public IStreamTypeProvider StreamTypeProvider { get; set; } = streamTypeProvider;
+    public IStreamTypeProvider StreamTypeProvider { get; set; } = new StreamTypeProvider();
     /// <summary>
     /// Disabling soft delete will have both performance penalties and will make it impossible to recover deleted streams.
     /// Defaults to Soft delete mode, an IsDeleted flag will be set to true and a DeletedOn timestamp will be recorded.

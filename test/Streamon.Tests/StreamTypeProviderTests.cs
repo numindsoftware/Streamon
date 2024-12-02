@@ -14,14 +14,6 @@ public class StreamTypeProviderTests
     }
 
     [Fact]
-    public void RegisterType_ShouldRegisterType()
-    {
-        _provider.RegisterType<TestEvent>("TestEvent");
-        var result = _provider.ResolveEvent("TestEvent", "{}");
-        Assert.IsType<TestEvent>(result);
-    }
-
-    [Fact]
     public void RegisterTypes_ShouldRegisterTypesFromAssembly()
     {
         _provider.RegisterTypes([Assembly.GetExecutingAssembly()]);

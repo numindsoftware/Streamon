@@ -10,25 +10,18 @@ public class StreamTypeProvider : IStreamTypeProvider
     private readonly Dictionary<string, Type> _eventTypesRegistry = [];
     private readonly JsonSerializerOptions _serializerOptions;
 
-    public StreamTypeProvider(JsonSerializerOptions serializerOptions)
+    public StreamTypeProvider(JsonSerializerOptions? serializerOptions = default)
     {
-        _serializerOptions = serializerOptions;
-        RegisterTypes([Assembly.GetEntryAssembly()!, Assembly.GetExecutingAssembly(), Assembly.GetCallingAssembly()]);
+        _serializerOptions = serializerOptions ?? new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        RegisterTypes(Assembly.GetEntryAssembly()!);
+        RegisterTypes(Assembly.GetExecutingAssembly());
+        RegisterTypes(Assembly.GetCallingAssembly());
     }
 
-    public StreamTypeProvider RegisterType<T>(string name) => RegisterType(name, typeof(T));
-
-    public StreamTypeProvider RegisterType(string name, Type eventType)
+    public IStreamTypeProvider RegisterTypes(Assembly assembly)
     {
-        if (!_eventTypesRegistry.TryAdd(name, eventType)) _eventTypesRegistry[name] = eventType;
-        return this;
-    }
-
-    public StreamTypeProvider RegisterTypes(IEnumerable<Assembly> assemblies)
-    {
-        foreach (var assembly in assemblies)
+        if (_registeredAssemblies.Contains(assembly))
         {
-            if (_registeredAssemblies.Contains(assembly)) continue;
             _registeredAssemblies.Add(assembly);
             assembly.GetTypes()
                 .Select(static t => new { Type = t, Attribute = t.GetCustomAttribute<EventTypeAttribute>() })
@@ -39,24 +32,23 @@ public class StreamTypeProvider : IStreamTypeProvider
         return this;
     }
 
-    public StreamTypeProvider RegisterTypes(params Type[] types)
+    public StreamTypeProvider RegisterType(string name, Type eventType)
     {
-        foreach (var type in types) RegisterTypes([type.Assembly]);
+        if (!_eventTypesRegistry.TryAdd(name, eventType)) _eventTypesRegistry[name] = eventType;
         return this;
     }
-
-    public StreamTypeProvider RegisterTypes<T>() => RegisterTypes([typeof(T).Assembly]);
 
     public object ResolveEvent(string name, string data)
     {
         if (!_eventTypesRegistry.TryGetValue(name, out var eventType))
         {
-            var types = _registeredAssemblies
+            var type = _registeredAssemblies
                 .SelectMany(static a => a.GetTypes())
-                .Where(t => !t.IsAbstract && !t.IsEnum && !t.IsInterface && t.Name == name);
-            if (!types.Any() || types.Count() > 1) throw new EventTypeNotFoundException(name);
-
-            _eventTypesRegistry[name] = eventType = types.Single();
+                .Where(t => !t.IsAbstract && !t.IsEnum && !t.IsInterface)
+                .Select(static t => new { Type = t, Attribute = t.GetCustomAttribute<EventTypeAttribute>() })
+                .Where(t => (t.Attribute?.Name ?? t.Type.Name) == name)
+                .SingleOrDefault() ?? throw new EventTypeNotFoundException(name);
+            _eventTypesRegistry[name] = eventType = type.Type;
         }
         return JsonSerializer.Deserialize(data, eventType, _serializerOptions) ?? throw new StreamTypeProviderException(name, eventType, $"The event data couldn't be deserialized to type {eventType}");
     }

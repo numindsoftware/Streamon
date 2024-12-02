@@ -141,7 +141,9 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
     private async Task<long> FetchLatestGlobalPositionAsync(long globalPosition, CancellationToken cancellationToken = default)
     {
         List<StreamEntity> entities = [];
-        await foreach (var entity in tableClient.QueryAsync<StreamEntity>(e => e.RowKey == options.StreamEntityRowKey && e.GlobalSequence >= globalPosition, cancellationToken: cancellationToken)) entities.Add(entity);
-        return entities.Count == 0 ? globalPosition : entities.Max(static e => e.GlobalSequence);
+        await foreach (var page in tableClient.QueryAsync<StreamEntity>(e => e.RowKey == options.StreamEntityRowKey && e.GlobalSequence >= globalPosition, cancellationToken: cancellationToken).AsPages())
+            globalPosition = Math.Max(page.Values.Select(e => e.GlobalSequence).DefaultIfEmpty(globalPosition).Max(), globalPosition);
+            
+        return globalPosition;
     }
 }
