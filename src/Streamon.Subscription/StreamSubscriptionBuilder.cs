@@ -2,32 +2,26 @@
 
 namespace Streamon.Subscription;
 
-public class StreamSubscriptionBuilder(SubscriptionId subscriptionId, IServiceCollection services)
+public class StreamSubscriptionBuilder(IServiceCollection services, SubscriptionId subscriptionId, StreamSubscriptionType streamSubscriptionType)
 {
-    public SubscriptionId SubscriptionId => subscriptionId;
-    public IServiceCollection Services => services;
+    public IServiceCollection Services { get; } = services;
+    public SubscriptionId SubscriptionId { get; } = subscriptionId;
+    public StreamSubscriptionType StreamSubscriptionType { get; } = streamSubscriptionType;
+    public List<Type> StreamEventHandlers { get; } = [];
 
     public StreamSubscriptionBuilder AddEventHandler<T>() where T : class, IEventHandler
     {
-        services.AddKeyedSingleton<T>(subscriptionId);
+        StreamEventHandlers.Add(typeof(T));
         return this;
     }
 
-    //public StreamSubscriptionBuilder AddEventHandler<T>(Func<IServiceProvider, SubscriptionId, IEventHandler> implementationFactory) where T : class, IEventHandler
-    //{
-    //    services.AddKeyedSingleton(subscriptionId, (sp, key) => implementationFactory(sp, SubscriptionId.From(key!.ToString()!)));
-    //    return this;
-    //}
-
-    //public StreamSubscriptionBuilder AddCheckpointStore<T>(Func<IServiceProvider, SubscriptionId, ICheckpointStore> implementationFactory) where T : class, ICheckpointStore
-    //{
-    //    services.AddKeyedSingleton(subscriptionId, (sp, key) => implementationFactory(sp, SubscriptionId.From(key!.ToString()!)));
-    //    return this;
-    //}
-
-    //public StreamSubscriptionBuilder AddSubscriptionStreamReader<T>(Func<IServiceProvider, SubscriptionId, ISubscriptionStreamReader> implementationFactory) where T : class, ISubscriptionStreamReader
-    //{
-    //    services.AddKeyedSingleton<ISubscriptionStreamReader, T>(subscriptionId);
-    //    return this;
-    //}
+    public StreamSubscription Build(IServiceProvider serviceProvider)
+    {
+        var checkpointStore = serviceProvider.GetRequiredKeyedService<ICheckpointStore>(SubscriptionId.Value);
+        var streamEventHandlerResolver = serviceProvider.GetRequiredKeyedService<IEventHandlerResolver>(SubscriptionId.Value);
+        var subscriptionStreamReader = serviceProvider.GetRequiredKeyedService<ISubscriptionStreamReader>(SubscriptionId.Value);
+        StreamSubscription subscription = new(SubscriptionId, StreamSubscriptionType, streamEventHandlerResolver, checkpointStore, subscriptionStreamReader);
+        StreamEventHandlers.ForEach(t => subscription.AddEventHandler(t));
+        return subscription;
+    }
 }

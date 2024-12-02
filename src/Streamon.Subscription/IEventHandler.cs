@@ -2,10 +2,10 @@
 
 public interface IEventHandler
 {
-    ValueTask HandleEventAsync(EventConsumeContext<object> context, CancellationToken cancellationToken = default);
+    ValueTask HandleAsync(EventConsumeContext<object> context, CancellationToken cancellationToken = default);
 }
 
-public interface IEventHandler<T>
+public interface IStreamEventHandler<T>
 {
-    ValueTask HandleEventAsync(EventConsumeContext<T> context, CancellationToken cancellationToken = default);
+    ValueTask HandleAsync(EventConsumeContext<T> context, CancellationToken cancellationToken = default);
 }

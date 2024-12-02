@@ -10,7 +10,7 @@ Event streaming store platform for real-time data processing and analytics.
 ## Providers
 * In Memory
 * [Azure Table Storage](https://learn.microsoft.com/en-us/azure/storage/tables/table-storage-overview)
-* [Azure Cosmos DB](https://developer.azurecosmosdb.com/tools) (_in progress_, can be used in CosmosDb still by using the Table Api)
+* [Azure Cosmos DB](https://developer.azurecosmosdb.com/tools) (_in progress_, you can connect to CosmosDb using the Azure Table Storage provider above)
 
 ## Features
 

@@ -7,20 +7,21 @@ namespace Streamon.Azure.TableStorage.Subscription;
 
 public static class StreamSubscriptionBuilderExtensions
 {
-    public static StreamSubscriptionBuilder AddTableStorageCheckpointStore(this StreamSubscriptionBuilder builder, string connectionString, string? tableName = default)
+    public static StreamSubscriptionBuilder UseTableStorageCheckpointStore(this StreamSubscriptionBuilder builder, string connectionString, string streamTableName, string? checkpointTableName = default)
     {
-        builder.Services.AddKeyedSingleton<ICheckpointStore>(builder.SubscriptionId, (_, _) => new TableCheckpointStore(new TableClient(connectionString, tableName), tableName));
+        checkpointTableName ??= TableCheckpointStore.DefaultCheckpointTableName;
+        builder.Services.AddKeyedSingleton<ICheckpointStore>(builder.SubscriptionId.Value, (_, _) => new TableCheckpointStore(new TableClient(connectionString, checkpointTableName), streamTableName));
         return builder;
     }
 
-    public static StreamSubscriptionBuilder AddTableStorageSubscriptionStreamReader(this StreamSubscriptionBuilder builder, string connectionString, string tableName, Action<TableStreamStoreOptions>? configureOptions = default)
+    public static StreamSubscriptionBuilder UseTableStorageSubscriptionStreamReader(this StreamSubscriptionBuilder builder, string connectionString, string streamTableName, Action<TableStreamStoreOptions>? configureOptions = default)
     {
         var optionsBuilder = builder.Services.AddOptions<TableStreamStoreOptions>();
         if (configureOptions is not null) optionsBuilder.Configure(configureOptions);
-        builder.Services.AddKeyedSingleton<ISubscriptionStreamReader>(builder.SubscriptionId, (sp, _) => 
+        builder.Services.AddKeyedSingleton<ISubscriptionStreamReader>(builder.SubscriptionId.Value, (sp, _) => 
         {
             var options = sp.GetRequiredService<IOptions<TableStreamStoreOptions>>().Value;
-            return ActivatorUtilities.CreateInstance<TableSubscriptionStreamReader>(sp, new TableClient(connectionString, tableName));
+            return new TableSubscriptionStreamReader(new TableClient(connectionString, streamTableName), options);
         });
         return builder;
     }

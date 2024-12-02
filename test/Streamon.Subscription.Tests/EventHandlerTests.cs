@@ -9,6 +9,6 @@ public class EventHandlerTests
     {
         EventConsumeContext<object> context = new(SubscriptionId.New(), StreamId.From("order-123"), EventId.New(), OrderEvents.OrderCaptured);
         TestEventHandler eventHandler = new();
-        await eventHandler.HandleEventAsync(context);
+        await eventHandler.HandleAsync(context);
     }
 }

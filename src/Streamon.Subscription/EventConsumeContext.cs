@@ -19,4 +19,5 @@ public class EventConsumeContext<T>(SubscriptionId subscriptionId, StreamId stre
     public StreamPosition GlobalPosition { get; set; }
     public EventMetadata? Metadata { get; set; }
     public Dictionary<string, object> ContextItems { get; } = [];
+    public DateTimeOffset Timestamp { get; set; }
 }

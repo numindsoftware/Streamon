@@ -75,21 +75,15 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
         Assert.Equal(9, readStream.Count());
     }
 
-    //[Fact, Priority(7)]
-    //public async Task ProjectEventsForStream(StreamId streamId, IEnumerable<object> events)
-    //{
-    //    var subscriptionId = SubscriptionId.New();
+    [Fact, Priority(7)]
+    public async Task ProjectEventsForStream()
+    {
+        var subscription = containerFixture.SubscriptionManager.Get(SubscriptionId.From("test-subscription"));
+        await subscription.PollAsync();
 
-    //    ServiceCollection services = new();
-    //    services.AddStreamSubscription(subscriptionId, StreamSubscriptionType.CatchUp)
-    //        .AddTableStorageCheckpointStore(containerFixture.TestContainer.GetConnectionString())
-    //        .AddTableStorageSubscriptionStreamReader("")
-    //        .AddEventHandler<OrderInMemoryProjector>();
-
-    //    var provider = services.BuildServiceProvider();
-        
-    //    await store.AppendEventsAsync(streamId, StreamPosition.Start, events);
-    //}
+        var projection = OrderInMemoryProjector.Projections[new StreamId("order-124")];
+        Assert.NotNull(projection);
+    }
 
     [Fact, Priority(8)]
     public async Task SoftDeletesExistingStream()
@@ -109,12 +103,4 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
 
     public record TestEvent1([property: EventId] string Id);
     public record TestEvent2([property: EventId] string Id);
-}
-
-public class OrderInMemoryProjector : IEventHandler
-{
-    public ValueTask HandleEventAsync(EventConsumeContext<object> context, CancellationToken cancellationToken = default)
-    {
-        throw new NotImplementedException();
-    }
 }

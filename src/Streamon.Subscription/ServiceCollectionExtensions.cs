@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Streamon.Subscription;
 
@@ -6,13 +7,10 @@ public static class ServiceCollectionExtensions
 {
     public static StreamSubscriptionBuilder AddStreamSubscription(this IServiceCollection services, SubscriptionId subscriptionId, StreamSubscriptionType streamSubscriptionType)
     {
-        services.AddKeyedSingleton<StreamSubscription>(subscriptionId, (sp, _) =>
-        {
-            var eventHandlerResolver = sp.GetKeyedService<IEventHandlerResolver>(subscriptionId) ?? ActivatorUtilities.CreateInstance<ServiceProviderEventHandlerResolver>(sp);
-            var checkpointStore = sp.GetRequiredKeyedService<ICheckpointStore>(subscriptionId);
-            var subscriptionStreamReader = sp.GetRequiredKeyedService<ISubscriptionStreamReader>(subscriptionId);
-            return new(subscriptionId, streamSubscriptionType, eventHandlerResolver, checkpointStore, subscriptionStreamReader);
-        });
-        return new(subscriptionId, services);
+        StreamSubscriptionBuilder streamSubscriptionBuilder = new(services, subscriptionId, streamSubscriptionType);
+        services.TryAddSingleton<SubscriptionManager>();
+        services.TryAddKeyedSingleton<IEventHandlerResolver, ServiceProviderEventHandlerResolver>(subscriptionId.Value);
+        services.AddKeyedSingleton(subscriptionId.Value, (sp, _) => streamSubscriptionBuilder.Build(sp));
+        return streamSubscriptionBuilder;
     }
 }

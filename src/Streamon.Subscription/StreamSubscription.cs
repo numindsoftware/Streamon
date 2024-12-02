@@ -4,11 +4,14 @@ public class StreamSubscription(SubscriptionId subscriptionId, StreamSubscriptio
 {
     private readonly Dictionary<Type, IEventHandler?> _eventHandlers = [];
 
-    public StreamSubscription AddEventHandler<T>() where T : IEventHandler
+    public StreamSubscription AddEventHandler(Type eventHandlerType)
     {
-        _eventHandlers.TryAdd(typeof(T), default);
+        if (!eventHandlerType.IsAssignableTo(typeof(IEventHandler))) throw new EventHandlerRegistrationException(eventHandlerType, "Event handlers from implement or inherit from a type which implements the IEventHandler interface");
+        _eventHandlers.TryAdd(eventHandlerType, default);
         return this;
     }
+
+    public StreamSubscription AddEventHandler<T>() where T : class, IEventHandler => AddEventHandler(typeof(T));
 
     public async Task PollAsync(CancellationToken cancellationToken = default)
     {
@@ -35,12 +38,13 @@ public class StreamSubscription(SubscriptionId subscriptionId, StreamSubscriptio
                 Metadata = @event.Metadata,
                 GlobalPosition = @event.GlobalPosition,
                 StreamPosition = @event.StreamPosition,
+                Timestamp = @event.Timestamp
             };
             foreach (var eventHandler in _eventHandlers)
             {
                 var handler = eventHandler.Value;
                 if (handler is null) _eventHandlers[eventHandler.Key] = handler = eventHandlerResolver.Resolve(eventHandler.Key);
-                await handler!.HandleEventAsync(context, cancellationToken);
+                await handler!.HandleAsync(context, cancellationToken);
             }
             await checkpointStore.SetCheckpointAsync(subscriptionId, context.GlobalPosition, cancellationToken);
         }

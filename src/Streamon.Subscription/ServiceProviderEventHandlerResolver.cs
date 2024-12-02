@@ -2,8 +2,7 @@
 
 namespace Streamon.Subscription;
 
-internal class ServiceProviderEventHandlerResolver(SubscriptionId subscriptionId, IServiceProvider serviceProvider) : IEventHandlerResolver
+internal class ServiceProviderEventHandlerResolver(IServiceProvider serviceProvider) : IEventHandlerResolver
 {
-    public IEventHandler Resolve(Type handlerType) => 
-        (IEventHandler)serviceProvider.GetRequiredKeyedService(handlerType, subscriptionId);
+    public IEventHandler Resolve(Type handlerType) => (IEventHandler)ActivatorUtilities.CreateInstance(serviceProvider, handlerType);
 }

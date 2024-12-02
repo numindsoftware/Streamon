@@ -4,22 +4,22 @@ using Streamon.Subscription;
 
 namespace Streamon.Azure.TableStorage.Subscription;
 
-public class TableCheckpointStore(TableClient checkpointTableClient, string? streamTableName = default) : ICheckpointStore
+public class TableCheckpointStore(TableClient checkpointTableClient, string streamTableName) : ICheckpointStore
 {
-    private readonly string _streamTableName = streamTableName ?? "StreamonCheckpoint";
+    public const string DefaultCheckpointTableName = "StreamonCheckpoint";
 
     public async Task<StreamPosition> GetCheckpointAsync(SubscriptionId subscriptionId, CancellationToken cancellationToken = default)
     {
-        var response = await checkpointTableClient.GetEntityIfExistsAsync<CheckpointEntity>(_streamTableName, subscriptionId.Value, cancellationToken: cancellationToken);
-        if (!response.HasValue) throw new CheckpointNotFoundException(subscriptionId);
-        return StreamPosition.From(response.Value!.Position);
+        var response = await checkpointTableClient.GetEntityIfExistsAsync<CheckpointEntity>(streamTableName, subscriptionId.Value, cancellationToken: cancellationToken);
+        return response.HasValue ? StreamPosition.From(response.Value!.Position) : StreamPosition.End;
     }
 
     public async Task SetCheckpointAsync(SubscriptionId subscriptionId, StreamPosition position, CancellationToken cancellationToken = default)
     {
+        await checkpointTableClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken);
         var response = await checkpointTableClient.UpsertEntityAsync(new CheckpointEntity
         {
-            PartitionKey = _streamTableName,
+            PartitionKey = streamTableName,
             RowKey = subscriptionId.ToString(),
             Position = position.Value
         }, cancellationToken: cancellationToken);

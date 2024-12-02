@@ -14,6 +14,6 @@ public abstract class EventHandler : IEventHandler
         return this;
     }
 
-    public ValueTask HandleEventAsync(EventConsumeContext<object> context, CancellationToken cancellationToken = default) =>
+    public ValueTask HandleAsync(EventConsumeContext<object> context, CancellationToken cancellationToken = default) =>
         _handlers.TryGetValue(context.Payload.GetType(), out var handler) ? handler(context, cancellationToken) : ValueTask.CompletedTask;
 }
