@@ -69,7 +69,7 @@ Icon:
 
 The project is built and tested using GitHub Actions. The build artifacts are published to GitHub Packages.
 
-Github actions are configured to publish the packages to GitHub Packages on every push to the `master` branch.
+Github actions are configured to publish the packages to GitHub Packages on every push to the `main` branch.
 
 Local testing and development of Github actions can be done using the [`act`](https://github.com/nektos/act) tool. 
 
