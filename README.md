@@ -3,12 +3,19 @@
 [![.github/workflows/ci.yml](https://github.com/numindsoftware/Streamon/actions/workflows/ci.yml/badge.svg)](https://github.com/numindsoftware/Streamon/actions/workflows/ci.yml)
 [![.github/workflows/cd.yml](https://github.com/numindsoftware/Streamon/actions/workflows/cd.yml/badge.svg)](https://github.com/numindsoftware/Streamon/actions/workflows/cd.yml)
 
-# Streamon
+Streamon
+========
 
-Event streaming store platform for real-time data processing and analytics.
+***Event streaming store platform for real-time data processing and analytics.***
+
+Streamon is the attempt to create a common set of abstraction APIs over a variety of event streaming stores, such as Azure Table Storage, Azure Cosmos DB, and others.
+
+The goal is to provide a simple and consistent way to work with event streams, allowing developers to focus on the business logic and not on the underlying storage implementation.
+
+Streamon is not an Event Sourcing library, but it can be used as an Event/Stream store for existing ones.
 
 ## Providers
-* In Memory
+* In Memory (for testing and POC's)
 * [Azure Table Storage](https://learn.microsoft.com/en-us/azure/storage/tables/table-storage-overview)
 * [Azure Cosmos DB](https://developer.azurecosmosdb.com/tools) (_in progress_, you can connect to CosmosDb using the Azure Table Storage provider above)
 
@@ -34,10 +41,10 @@ Event streaming store platform for real-time data processing and analytics.
 
 ## Azure Table Storage Provider Details
 
-The Azure Table Storage provider is a simple implementation of the `IStreamStore` interface.
+The Azure Table Storage provider is a simple implementation of the [`IStreamStore`](src/Streamon/IStreamStore.cs) interface.
 It uses Azure Table Storage to store events in a single table.
 The table is partitioned by the stream id and the row key is the event id.
-The provider uses the `Ulid` library to generate unique identifiers for events.
+The provider uses the [`Ulid`](https://github.com/Cysharp/Ulid) library to generate unique identifiers for events.
 
 Table Storage only support batches of up to 100 entities, trying to write more than that will result in an exception.
 The responsibility of handling this is left to the caller, as the provider does not implement any batching logic due to the fact that it can't guarantee the consistency of persistence across different batches.
@@ -69,7 +76,7 @@ Icon:
 
 The project is built and tested using GitHub Actions. The build artifacts are published to GitHub Packages.
 
-Github actions are configured to publish the packages to GitHub Packages on every push to the `main` branch.
+Github actions are configured trigger a CI build on every push to the `main` branch. Packages will be published to nuget.org on every release.
 
 Local testing and development of Github actions can be done using the [`act`](https://github.com/nektos/act) tool. 
 

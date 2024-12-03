@@ -2,7 +2,7 @@
 
 	<PropertyGroup>
 		<Product>Streamon.Subscription</Product>
-		<Description>Abstractions and common logic to provide subscribe to Streamon event streams.</Description>
+		<Description>Abstractions and common logic for Streamon event streams Subscriptions.</Description>
 	</PropertyGroup>
 
 	<ItemGroup>
