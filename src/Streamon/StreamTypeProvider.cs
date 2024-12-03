@@ -20,7 +20,7 @@ public class StreamTypeProvider : IStreamTypeProvider
 
     public IStreamTypeProvider RegisterTypes(Assembly assembly)
     {
-        if (_registeredAssemblies.Contains(assembly))
+        if (!_registeredAssemblies.Contains(assembly))
         {
             _registeredAssemblies.Add(assembly);
             assembly.GetTypes()
