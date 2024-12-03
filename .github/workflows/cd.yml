@@ -1,4 +1,4 @@
-name: Nuget package publishing when a release is created through Github
+name: CD - nuget publish on release
 
 on:
   release:
