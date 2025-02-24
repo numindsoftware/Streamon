@@ -80,6 +80,10 @@ Github actions are configured trigger a CI build on every push to the `main` bra
 
 Local testing and development of Github actions can be done using the [`act`](https://github.com/nektos/act) tool. 
 
+## Contributing
+
+Let's keep it simple and clean. Feel free to open an issue or a pull request, I'll review it and most likely than not, merge it.
+
 ## License
 
 [MIT License](LICENSE)
