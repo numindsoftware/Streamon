@@ -3,23 +3,19 @@ using System.Runtime.CompilerServices;
 
 namespace Streamon.Subscription.Tests;
 
-internal class TestEventHandler : EventHandler
+internal class TestEventHandler : IEventAsyncHandler<OrderShipped>
 {
-    public TestEventHandler()
+    public ValueTask HandleAsync(EventConsumeContext<OrderShipped> context, CancellationToken cancellationToken = default)
     {
-        On<OrderShipped>((context, cancellationToken) =>
-        {
-            Assert.Equal(StreamId.From("order-123"), context.StreamId);
-
-            return ValueTask.CompletedTask;
-        });
+        Assert.Equal(StreamId.From("order-123"), context.StreamId);
+        return ValueTask.CompletedTask;
     }
 }
 
-internal class EventHandlerResolver : IEventHandlerResolver
-{
-    public IEventHandler Resolve(Type eventType) => (IEventHandler)Activator.CreateInstance(eventType)!;
-}
+//internal class EventHandlerResolver : IEventHandlerResolver
+//{
+//    public IEventAsyncHandler Resolve(Type eventType) => (IEventAsyncHandler)Activator.CreateInstance(eventType)!;
+//}
 
 internal class CheckpointStore : ICheckpointStore
 {

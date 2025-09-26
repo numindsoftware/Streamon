@@ -1,12 +1,14 @@
-﻿using Streamon.Tests.Fixtures;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Streamon.Tests.Fixtures;
 
 namespace Streamon.Subscription.Tests;
 
 public class StreamSubscriptionTests
 {
     private readonly CheckpointStore _checkpointStore = new();
-    private readonly EventHandlerResolver _eventHandlerResolver = new();
     private readonly SubscriptionStreamReader _subscriptionStreamReader = new();
+    private readonly EventHandlerRegistry _eventHandlerRegistry = new();
+    private readonly IServiceProvider _serviceProvider = new ServiceCollection().BuildServiceProvider();
 
     public StreamSubscriptionTests()
     {
@@ -21,7 +23,7 @@ public class StreamSubscriptionTests
     [Fact]
     public async Task EventHandlerCaptured()
     {
-        StreamSubscription subscription = new(new SubscriptionId("test-subscription"), StreamSubscriptionType.CatchUp, _eventHandlerResolver, _checkpointStore, _subscriptionStreamReader);
+        StreamSubscription subscription = new(SubscriptionId.From("test-subscription"), StreamSubscriptionType.CatchUp, _checkpointStore, _subscriptionStreamReader, _eventHandlerRegistry, _serviceProvider);
         subscription.AddEventHandler<TestEventHandler>();
         await subscription.PollAsync();
     }

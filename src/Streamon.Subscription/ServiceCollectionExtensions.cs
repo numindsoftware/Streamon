@@ -9,7 +9,6 @@ public static class ServiceCollectionExtensions
     {
         StreamSubscriptionBuilder streamSubscriptionBuilder = new(services, subscriptionId, streamSubscriptionType);
         services.TryAddSingleton<SubscriptionManager>();
-        services.TryAddKeyedSingleton<IEventHandlerResolver, ServiceProviderEventHandlerResolver>(subscriptionId.Value);
         services.AddKeyedSingleton(subscriptionId.Value, (sp, _) => streamSubscriptionBuilder.Build(sp));
         return streamSubscriptionBuilder;
     }

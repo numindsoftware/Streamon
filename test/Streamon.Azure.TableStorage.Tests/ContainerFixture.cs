@@ -49,22 +49,5 @@ public class ContainerFixture : IAsyncLifetime
     public SubscriptionManager SubscriptionManager { get; private set; } = null!;
 }
 
-public class OrderInMemoryProjector : IEventHandler
-{
-    public static Dictionary<StreamId, OrderProjection> Projections { get; } = [];
-
-    public ValueTask HandleAsync(EventConsumeContext<object> context, CancellationToken cancellationToken = default)
-    {
-        Projections.TryGetValue(context.StreamId, out var projection);
-        Projections[context.StreamId] = context.Payload switch
-        {
-            OrderCaptured e => new OrderProjection(e.Id, new(e.Product, e.Price), context.Timestamp),
-            OrderCancelled => projection! with { CancelledOn = context.Timestamp },
-            _ => projection!
-        };
-        return ValueTask.CompletedTask;
-    }
-}
-
 public record OrderProjection(string Id, OrderProduct OrderProduct, DateTimeOffset CreatedOn, DateTimeOffset? CancelledOn = default, string? CancelledBy = default, string? CancellationReason = default);
 public record OrderProduct(string Name, decimal Price);

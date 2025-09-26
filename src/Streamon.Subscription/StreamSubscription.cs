@@ -1,17 +1,20 @@
-﻿namespace Streamon.Subscription;
+﻿using Microsoft.Extensions.DependencyInjection;
 
-public class StreamSubscription(SubscriptionId subscriptionId, StreamSubscriptionType streamSubscriptionType, IEventHandlerResolver eventHandlerResolver, ICheckpointStore checkpointStore, ISubscriptionStreamReader subscriptionStreamReader)
+namespace Streamon.Subscription;
+
+public class StreamSubscription(
+    SubscriptionId subscriptionId, 
+    StreamSubscriptionType streamSubscriptionType, 
+    ICheckpointStore checkpointStore, 
+    ISubscriptionStreamReader subscriptionStreamReader,
+    IEventHandlerRegistry eventHandlerRegistry,
+    IServiceProvider serviceProvider)
 {
-    private readonly Dictionary<Type, IEventHandler?> _eventHandlers = [];
-
-    public StreamSubscription AddEventHandler(Type eventHandlerType)
+    public StreamSubscription AddEventHandler<THandler>()
     {
-        if (!eventHandlerType.IsAssignableTo(typeof(IEventHandler))) throw new EventHandlerRegistrationException(eventHandlerType, "Event handlers from implement or inherit from a type which implements the IEventHandler interface");
-        _eventHandlers.TryAdd(eventHandlerType, default);
+        eventHandlerRegistry.RegisterHandlersFrom(typeof(THandler));
         return this;
     }
-
-    public StreamSubscription AddEventHandler<T>() where T : class, IEventHandler => AddEventHandler(typeof(T));
 
     public async Task PollAsync(CancellationToken cancellationToken = default)
     {
@@ -33,20 +36,27 @@ public class StreamSubscription(SubscriptionId subscriptionId, StreamSubscriptio
 
         await foreach (var @event in subscriptionStreamReader.FetchAsync(lastCheckpoint, cancellationToken))
         {
-            var context = new EventConsumeContext<object>(subscriptionId, @event.StreamId, @event.EventId, @event.Payload)
+            //var context = new EventConsumeContext<object>(subscriptionId, @event.StreamId, @event.EventId, @event.Payload)
+            //{
+            //    Metadata = @event.Metadata,
+            //    GlobalPosition = @event.GlobalPosition,
+            //    StreamPosition = @event.StreamPosition,
+            //    Timestamp = @event.Timestamp
+            //};
+            var globalPosition = @event.GlobalPosition;
+
+            try
             {
-                Metadata = @event.Metadata,
-                GlobalPosition = @event.GlobalPosition,
-                StreamPosition = @event.StreamPosition,
-                Timestamp = @event.Timestamp
-            };
-            foreach (var eventHandler in _eventHandlers)
-            {
-                var handler = eventHandler.Value;
-                if (handler is null) _eventHandlers[eventHandler.Key] = handler = eventHandlerResolver.Resolve(eventHandler.Key);
-                await handler!.HandleAsync(context, cancellationToken);
+                foreach (var eventHandler in eventHandlerRegistry.GetHandlers(@event.Payload.GetType()))
+                {
+                    var handlerInstance = serviceProvider.GetService(eventHandler.HandlerType) ?? ActivatorUtilities.CreateInstance(serviceProvider, eventHandler.HandlerType);
+                }
+                globalPosition = await subscriptionStreamReader.GetLastGlobalPositionAsync(cancellationToken);
             }
-            await checkpointStore.SetCheckpointAsync(subscriptionId, context.GlobalPosition, cancellationToken);
+            finally
+            {
+                await checkpointStore.SetCheckpointAsync(subscriptionId, globalPosition, cancellationToken);
+            }
         }
     }
 }

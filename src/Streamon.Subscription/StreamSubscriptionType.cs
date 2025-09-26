@@ -3,5 +3,12 @@
 public enum StreamSubscriptionType
 {
     CatchUp,
-    Live
+    Live,
+    InMemory
+}
+
+public enum DispatchMode
+{
+    Sequential,
+    Parallel
 }
