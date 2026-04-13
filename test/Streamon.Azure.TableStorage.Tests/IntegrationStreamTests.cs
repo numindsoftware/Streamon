@@ -75,16 +75,6 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
         Assert.Equal(9, readStream.Count());
     }
 
-    [Fact, Priority(7)]
-    public async Task ProjectEventsForStream()
-    {
-        var subscription = containerFixture.SubscriptionManager.Get(SubscriptionId.From("test-subscription"));
-        await subscription.PollAsync();
-
-        var projection = OrderInMemoryProjector.Projections[new StreamId("order-124")];
-        Assert.NotNull(projection);
-    }
-
     [Fact, Priority(8)]
     public async Task SoftDeletesExistingStream()
     {

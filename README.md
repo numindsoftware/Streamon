@@ -39,6 +39,210 @@ Streamon is not an Event Sourcing library, but it can be used as an Event/Stream
 * Stream Projections
 * Stream Sweeper (Archiving and Purging)
 
+## Subscriptions
+
+The `Streamon.Subscription` package provides a pipeline for consuming events from a stream store via polling-based subscriptions. Subscriptions track their progress using checkpoints, so they can resume from where they left off after restarts.
+
+### Core Interfaces
+
+| Interface | Responsibility |
+|---|---|
+| [`IEventHandler<TEvent>`](src/Streamon.Subscription/IEventHandler.cs) | Handles a single event type asynchronously |
+| [`ICheckpointStore`](src/Streamon.Subscription/ICheckpointStore.cs) | Persists and retrieves the last processed position per subscription |
+| [`ISubscriptionStreamReader`](src/Streamon.Subscription/ISubscriptionStreamReader.cs) | Reads events from a position and reports the last global position |
+| [`IEventHandlerRegistry`](src/Streamon.Subscription/IEventHandlerRegistry.cs) | Discovers and stores handler delegates by event type |
+
+### Subscription Types
+
+| Type | Behavior |
+|---|---|
+| `StreamSubscriptionType.CatchUp` | Starts from `StreamPosition.Start` when no checkpoint exists — replays the full history |
+| `StreamSubscriptionType.Live` | Starts from the current end of the stream — only new events are processed |
+| `StreamSubscriptionType.InMemory` | In-memory only, useful for testing and temporary processing |
+
+### Defining an Event Handler
+
+Implement `IEventHandler<TEvent>` for each event type you want to handle:
+
+```csharp
+public class OrderCapturedHandler : IEventHandler<OrderCaptured>
+{
+    public ValueTask HandleAsync(EventHandlerContext<OrderCaptured> context, CancellationToken cancellationToken = default)
+    {
+        Console.WriteLine($"Order captured: {context.Payload.Id} at position {context.GlobalPosition}");
+        return ValueTask.CompletedTask;
+    }
+}
+
+public class OrderShippedHandler : IEventHandler<OrderShipped>
+{
+    public ValueTask HandleAsync(EventHandlerContext<OrderShipped> context, CancellationToken cancellationToken = default)
+    {
+        Console.WriteLine($"Order shipped: {context.Payload.Id}, tracking: {context.Payload.Tracking}");
+        return ValueTask.CompletedTask;
+    }
+}
+```
+
+The `EventHandlerContext<T>` record provides the full event envelope to the handler:
+
+| Property | Description |
+|---|---|
+| `SubscriptionId` | The subscription that received the event |
+| `StreamId` | The stream the event belongs to |
+| `EventId` | Unique event identifier |
+| `StreamPosition` | Position within the stream |
+| `GlobalPosition` | Position across all streams |
+| `Timestamp` | When the event was recorded |
+| `BatchId` | Groups events appended in the same call |
+| `Payload` | The strongly-typed event payload (`T`) |
+| `Metadata` | Optional per-event metadata dictionary |
+
+A single class can implement multiple `IEventHandler<T>` interfaces to handle several event types:
+
+```csharp
+public class OrderEventHandlers : IEventHandler<OrderCaptured>, IEventHandler<OrderShipped>
+{
+    public ValueTask HandleAsync(EventHandlerContext<OrderCaptured> context, CancellationToken cancellationToken = default)
+    {
+        // handle OrderCaptured
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask HandleAsync(EventHandlerContext<OrderShipped> context, CancellationToken cancellationToken = default)
+    {
+        // handle OrderShipped
+        return ValueTask.CompletedTask;
+    }
+}
+```
+
+### Registering Subscriptions (Dependency Injection)
+
+Use `AddStreamSubscription` to register a subscription and configure its checkpoint store, stream reader, and event handlers via the fluent builder:
+
+```csharp
+services.AddStreamSubscription(SubscriptionId.From("order-processing"), StreamSubscriptionType.CatchUp)
+    .UseTableStorageCheckpointStore(connectionString, streamTableName)
+    .UseTableStorageSubscriptionStreamReader(connectionString, streamTableName)
+    .AddEventHandler<OrderCapturedHandler>()
+    .AddEventHandler<OrderShippedHandler>();
+```
+
+Multiple independent subscriptions can be registered in the same DI container — each is stored as a keyed singleton using its `SubscriptionId`:
+
+```csharp
+services.AddStreamSubscription(SubscriptionId.From("order-processing"), StreamSubscriptionType.CatchUp)
+    .UseTableStorageCheckpointStore(connectionString, streamTableName)
+    .UseTableStorageSubscriptionStreamReader(connectionString, streamTableName)
+    .AddEventHandler<OrderCapturedHandler>();
+
+services.AddStreamSubscription(SubscriptionId.From("analytics"), StreamSubscriptionType.Live)
+    .UseTableStorageCheckpointStore(connectionString, streamTableName)
+    .UseTableStorageSubscriptionStreamReader(connectionString, streamTableName)
+    .AddEventHandler<AnalyticsHandler>();
+```
+
+### Polling for Events
+
+The `SubscriptionManager` drives all registered subscriptions. Call `PollAsync` periodically (e.g. from a background service) to fetch and process new events:
+
+```csharp
+var manager = sp.GetRequiredService<SubscriptionManager>();
+
+// Poll all subscriptions
+await manager.PollAsync(cancellationToken);
+
+// Or poll a specific subscription
+var subscription = manager.Get(SubscriptionId.From("order-processing"));
+await subscription.PollAsync(cancellationToken);
+```
+
+### Checkpoints
+
+Checkpoints track the last successfully processed global position for each subscription. The `ICheckpointStore` interface supports:
+
+- `GetCheckpointAsync(subscriptionId)` — returns the last saved position, or `StreamPosition.End` if none exists
+- `SetCheckpointAsync(subscriptionId, position)` — persists the position after processing
+
+The Azure Table Storage provider includes a built-in `TableCheckpointStore` implementation. For testing, you can implement `ICheckpointStore` with an in-memory dictionary.
+
+### Projectors
+
+For building read models or projections, implement `IEventInitialProjector<TEvent, TState>` (for creating initial state) and/or `IEventProjector<TEvent, TState>` (for updating existing state):
+
+```csharp
+public class OrderProjector : 
+    IEventInitialProjector<OrderCaptured, OrderSummary>,
+    IEventProjector<OrderShipped, OrderSummary>
+{
+    // Creates state from the first event
+    public ValueTask<OrderSummary> ProjectAsync(EventHandlerContext<OrderCaptured> @event, CancellationToken cancellationToken = default)
+    {
+        return ValueTask.FromResult(new OrderSummary(@event.Payload.Id, @event.Payload.Product, IsShipped: false));
+    }
+
+    public string GetIdentity(EventHandlerContext<OrderCaptured> @event, CancellationToken cancellationToken = default) => @event.Payload.Id;
+
+    // Updates existing state
+    public ValueTask<OrderSummary> ProjectAsync(OrderSummary state, EventHandlerContext<OrderShipped> @event, CancellationToken cancellationToken = default)
+    {
+        return ValueTask.FromResult(state with { IsShipped = true });
+    }
+
+    public string GetIdentity(EventHandlerContext<OrderShipped> @event, CancellationToken cancellationToken = default) => @event.Payload.Id;
+}
+
+public record OrderSummary(string Id, string Product, bool IsShipped);
+```
+
+> **Note:** The projector infrastructure (`EventProjectorBase<TProjector, TState>`) and its state read/write abstractions are still a work in progress. See the [copilot instructions](.github/copilot-instructions.md) for current status.
+
+### Full Example
+
+```csharp
+// 1. Define your events
+public record OrderCaptured(string Id, string Product, decimal Price);
+public record OrderShipped(string Id, string Tracking);
+
+// 2. Define your handler
+public class OrderCapturedHandler : IEventHandler<OrderCaptured>
+{
+    public ValueTask HandleAsync(EventHandlerContext<OrderCaptured> context, CancellationToken cancellationToken = default)
+    {
+        Console.WriteLine($"Processing order {context.Payload.Id} for {context.Payload.Product}");
+        return ValueTask.CompletedTask;
+    }
+}
+
+// 3. Register services
+services.AddStreamon()
+    .AddTableStorageStreamStore(connectionString, options =>
+    {
+        options.StreamTypeProvider = new StreamTypeProvider()
+            .RegisterTypes<OrderCaptured>()
+            .RegisterTypes<OrderShipped>();
+    });
+
+services.AddStreamSubscription(SubscriptionId.From("order-sub"), StreamSubscriptionType.CatchUp)
+    .UseTableStorageCheckpointStore(connectionString, "streams")
+    .UseTableStorageSubscriptionStreamReader(connectionString, "streams")
+    .AddEventHandler<OrderCapturedHandler>();
+
+// 4. Poll in a background service
+public class SubscriptionWorker(SubscriptionManager manager) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            await manager.PollAsync(stoppingToken);
+            await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+        }
+    }
+}
+```
+
 ## Azure Table Storage Provider Details
 
 The Azure Table Storage provider is a simple implementation of the [`IStreamStore`](src/Streamon/IStreamStore.cs) interface.

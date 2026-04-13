@@ -4,9 +4,6 @@ namespace Streamon;
 
 public static class ServiceCollectionExtensions
 {
-    public static StreamProvisionerBuilder AddStreamon(this IServiceCollection services)
-    {
-        return new StreamProvisionerBuilder(services).AddStreamTypeProvider();
-    }
-        
+    public static StreamProvisionerBuilder AddStreamon(this IServiceCollection services) =>
+        new StreamProvisionerBuilder(services).AddStreamTypeProvider();
 }

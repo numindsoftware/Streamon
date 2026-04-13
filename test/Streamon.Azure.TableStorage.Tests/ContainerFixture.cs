@@ -29,7 +29,7 @@ public class ContainerFixture : IAsyncLifetime
                 options.StreamTypeProvider = new StreamTypeProvider().RegisterTypes<OrderCaptured>();
             });
 
-        services.AddStreamSubscription(SubscriptionId.From("test-subscription"), StreamSubscriptionType.CatchUp)
+        services.AddStreamSubscription(SubscriptionId.From("test-subscription"))
             .UseTableStorageCheckpointStore(TestContainer.GetConnectionString(), nameof(IntegrationStreamTests))
             .UseTableStorageSubscriptionStreamReader(TestContainer.GetConnectionString(), nameof(IntegrationStreamTests))
             .AddEventHandler<OrderInMemoryProjector>();

@@ -5,11 +5,17 @@ namespace Streamon.Subscription;
 
 public static class ServiceCollectionExtensions
 {
-    public static StreamSubscriptionBuilder AddStreamSubscription(this IServiceCollection services, SubscriptionId subscriptionId, StreamSubscriptionType streamSubscriptionType)
+    public static StreamSubscriptionBuilder AddStreamSubscription(this IServiceCollection services, SubscriptionId subscriptionId, StreamSubscriptionType streamSubscriptionType = default, SubscriptionErrorHandling subscriptionErrorHandling = default, EventDispatchType eventDispatchType = default)
     {
-        StreamSubscriptionBuilder streamSubscriptionBuilder = new(services, subscriptionId, streamSubscriptionType);
+        StreamSubscriptionBuilder streamSubscriptionBuilder = new(subscriptionId, streamSubscriptionType, subscriptionErrorHandling, eventDispatchType);
         services.TryAddSingleton<SubscriptionManager>();
-        services.AddKeyedSingleton(subscriptionId.Value, (sp, _) => streamSubscriptionBuilder.Build(sp));
+        services.AddKeyedSingleton(subscriptionId.Value, (sp, _) =>
+        {
+            // Bridge IServiceProvider → service resolver at resolution time
+            streamSubscriptionBuilder.WithServiceResolver(type =>
+                sp.GetService(type) ?? ActivatorUtilities.CreateInstance(sp, type));
+            return streamSubscriptionBuilder.Build();
+        });
         return streamSubscriptionBuilder;
     }
 }

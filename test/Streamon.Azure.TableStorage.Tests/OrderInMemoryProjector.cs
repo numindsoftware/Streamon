@@ -3,19 +3,19 @@ using Streamon.Tests.Fixtures;
 
 namespace Streamon.Azure.TableStorage.Tests;
 
-public class OrderInMemoryProjector : IEventAsyncHandler
+public class OrderInMemoryProjector : IEventHandler
 {
     public static Dictionary<StreamId, OrderProjection> Projections { get; } = [];
 
-    public ValueTask HandleAsync(EventConsumeContext<object> context, CancellationToken cancellationToken = default)
+    public Task HandleAsync(Event @event, CancellationToken cancellationToken = default)
     {
-        Projections.TryGetValue(context.StreamId, out var projection);
-        Projections[context.StreamId] = context.Payload switch
+        Projections.TryGetValue(@event.StreamId, out var projection);
+        Projections[@event.StreamId] = @event.Payload switch
         {
-            OrderCaptured e => new OrderProjection(e.Id, new(e.Product, e.Price), context.Timestamp),
-            OrderCancelled => projection! with { CancelledOn = context.Timestamp },
+            OrderCaptured e => new OrderProjection(e.Id, new(e.Product, e.Price), @event.Timestamp),
+            OrderCancelled => projection! with { CancelledOn = @event.Timestamp },
             _ => projection!
         };
-        return ValueTask.CompletedTask;
+        return Task.CompletedTask;
     }
 }

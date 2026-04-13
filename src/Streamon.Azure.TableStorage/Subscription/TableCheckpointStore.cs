@@ -1,5 +1,4 @@
-﻿
-using Azure.Data.Tables;
+﻿using Azure.Data.Tables;
 using Streamon.Subscription;
 
 namespace Streamon.Azure.TableStorage.Subscription;

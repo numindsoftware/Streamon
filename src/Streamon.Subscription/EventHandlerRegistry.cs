@@ -4,6 +4,15 @@ using System.Reflection;
 
 namespace Streamon.Subscription;
 
+/// <summary>
+/// Provides a thread-safe registry for managing event handler delegates, enabling dynamic registration and retrieval of
+/// handlers for specific event types.
+/// </summary>
+/// <remarks>The EventHandlerRegistry class implements the IEventHandlerRegistry interface and supports the
+/// registration of handlers from types that implement the IEventHandler<T> interface. Handlers can be registered at
+/// runtime and are efficiently retrieved based on the event type. This class is designed for use in event-driven
+/// architectures where decoupled event handling is required. All operations are thread-safe, making the registry
+/// suitable for concurrent scenarios.</remarks>
 public class EventHandlerRegistry : IEventHandlerRegistry
 {
     private readonly ConcurrentDictionary<Type, Dictionary<Type, Func<object, object, CancellationToken, Task>>> _handlers = [];
@@ -12,11 +21,11 @@ public class EventHandlerRegistry : IEventHandlerRegistry
     {
         var handlerInterfaces = handlersType
             .GetInterfaces()
-            .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEventAsyncHandler<>));
+            .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEventHandler<>));
         foreach (var handlerInterface in handlerInterfaces)
         {
             var eventType = handlerInterface.GetGenericArguments()[0];
-            var handleMethod = handlerInterface.GetMethod(nameof(IEventAsyncHandler<object>.HandleAsync), BindingFlags.Instance | BindingFlags.Public);
+            var handleMethod = handlerInterface.GetMethod(nameof(IEventHandler<object>.HandleAsync), BindingFlags.Instance | BindingFlags.Public);
             if (handleMethod == null) continue;
             AddHandler(handlerInterface, handleMethod, eventType);
         }
@@ -33,7 +42,7 @@ public class EventHandlerRegistry : IEventHandlerRegistry
     private void AddHandler(Type handlerType, MethodInfo handleMethod, Type eventType)
     {
         var typeHandlers = _handlers.GetOrAdd(handlerType, _ => []);
-        var eventContextType = typeof(EventConsumeContext<>).MakeGenericType(eventType);
+        var eventContextType = typeof(EventHandlerContext<>).MakeGenericType(eventType);
 
         var instanceParam = Expression.Parameter(typeof(object), "instance");
         var eventContextParam = Expression.Parameter(typeof(object), "context");

@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 
 namespace Streamon.Azure.TableStorage.Subscription;
 
-public abstract class EventProjectorBase<TProjector, TState> : IEventProjector where TProjector : EventProjectorBase<TProjector, TState>
+public abstract class EventProjectorBase<TProjector, TState> where TProjector : EventProjectorBase<TProjector, TState>
 {
     private static readonly ConcurrentDictionary<Type, Func<TProjector, Event, CancellationToken, ValueTask<TState>>> _initializeHandlers = [];
     private static readonly ConcurrentDictionary<Type, Func<TProjector, TState, Event, CancellationToken, ValueTask<TState>>> _updateHandlers = [];
@@ -14,17 +14,17 @@ public abstract class EventProjectorBase<TProjector, TState> : IEventProjector w
 
         var initializingEventTypes = projectorType
             .GetInterfaces()
-            .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEventAsyncInitialProjector<,>))
+            .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEventInitialProjector<,>))
             .Select(i => i.GetGenericArguments()[0]);
         foreach (var eventType in initializingEventTypes)
         {
-            var eventContextType = typeof(EventConsumeContext<>).MakeGenericType(eventType);
-            var method = projectorType.GetMethod(nameof(IEventAsyncInitialProjector<object, object>.ProjectAsync), [ eventContextType, typeof(CancellationToken) ]);
+            var eventContextType = typeof(EventHandlerContext<>).MakeGenericType(eventType);
+            var method = projectorType.GetMethod(nameof(IEventInitialProjector<object, object>.Project), [ eventContextType, typeof(CancellationToken) ]);
             if (method != null)
             {
                 _initializeHandlers.AddOrUpdate(eventType, (TProjector projector, Event @event, CancellationToken cancellationToken) =>
                 {
-                    var factoryMethod = eventContextType.GetMethod(nameof(EventConsumeContext<object>.From))!;
+                    var factoryMethod = eventContextType.GetMethod(nameof(EventHandlerContext<object>.From))!;
                     var eventConsumeContext = factoryMethod.Invoke(null, [@event])!;
                     return (ValueTask<TState>)method.Invoke(projector, [eventConsumeContext, cancellationToken])!;
                 }, (_, v) => v);
@@ -33,17 +33,17 @@ public abstract class EventProjectorBase<TProjector, TState> : IEventProjector w
 
         var eventTypes = projectorType
             .GetInterfaces()
-            .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEventAsyncProjector<,>))
+            .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEventProjector<,>))
             .Select(i => i.GetGenericArguments()[0]);
         foreach (var eventType in eventTypes)
         {
-            var eventContextType = typeof(EventConsumeContext<>).MakeGenericType(eventType);
-            var method = projectorType.GetMethod(nameof(IEventAsyncProjector<object, object>.ProjectAsync), [typeof(TState), eventContextType, typeof(CancellationToken)]);
+            var eventContextType = typeof(EventHandlerContext<>).MakeGenericType(eventType);
+            var method = projectorType.GetMethod(nameof(IEventProjector<object, object>.ProjectAsync), [typeof(TState), eventContextType, typeof(CancellationToken)]);
             if (method != null)
             {
                 _updateHandlers.AddOrUpdate(eventType, (TProjector projector, TState state, Event @event, CancellationToken cancellationToken) =>
                 {
-                    var factoryMethod = eventContextType.GetMethod(nameof(EventConsumeContext<object>.From))!;
+                    var factoryMethod = eventContextType.GetMethod(nameof(EventHandlerContext<object>.From))!;
                     var eventConsumeContext = factoryMethod.Invoke(null, [@event])!;
                     return (ValueTask<TState>)method.Invoke(projector, [state, eventConsumeContext, cancellationToken])!;
                 }, (_, v) => v);

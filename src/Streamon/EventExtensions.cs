@@ -19,8 +19,7 @@ public static class EventExtensions
         {
             eventIdMember = @event.GetType()
                 .GetMembers(BindingFlags.Instance | BindingFlags.Public)
-                .Where(static mi => mi.GetCustomAttribute<EventIdAttribute>() != null)
-                .FirstOrDefault();
+                .FirstOrDefault(static mi => mi.GetCustomAttribute<EventIdAttribute>() != null);
             if (eventIdMember is not null)
             {
                 EventIdMembersMap[@event.GetType()] = eventIdMember;

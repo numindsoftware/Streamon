@@ -22,10 +22,8 @@ builder.Services
         //options.PartitionKey = "OrderProcessing";
     });
 
-builder.Services.AddStreamSubscription(SubscriptionId.From("OrderProcessing"), StreamSubscriptionType.Live)
-    .AddEventHandler<object>();
+builder.Services.AddStreamSubscription(SubscriptionId.From("OrderProcessing"), StreamSubscriptionType.Live);
 
-builder.Services.AddStreamSubscription(SubscriptionId.From("OrderProjection"), StreamSubscriptionType.CatchUp)
-    .AddEventHandler<object>();
+builder.Services.AddStreamSubscription(SubscriptionId.From("OrderProjection"), StreamSubscriptionType.CatchUp);
 
 builder.Build().Run();

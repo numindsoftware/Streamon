@@ -4,7 +4,7 @@ using Streamon.Subscription;
 
 namespace Streamon.Azure.TableStorage.Subscription;
 
-public abstract class TableEntityEventProjector<TEntity>(TableClient tableClient) : IEventProjector where TEntity : class, ITableEntity, new()
+public abstract class TableEntityEventProjector<TEntity>(TableClient tableClient)  where TEntity : class, ITableEntity, new()
 {
     protected abstract Task HandleAsync(TEntity entity, Event @event, CancellationToken cancellationToken = default);
 

@@ -1,61 +1,36 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-
-namespace Streamon.Subscription;
+﻿namespace Streamon.Subscription;
 
 public class StreamSubscription(
-    SubscriptionId subscriptionId, 
-    StreamSubscriptionType streamSubscriptionType, 
-    ICheckpointStore checkpointStore, 
+    SubscriptionId subscriptionId,
+    StreamSubscriptionType streamSubscriptionType,
+    SubscriptionErrorHandling errorHandling,
+    ICheckpointStore checkpointStore,
     ISubscriptionStreamReader subscriptionStreamReader,
-    IEventHandlerRegistry eventHandlerRegistry,
-    IServiceProvider serviceProvider)
+    EventHandlerDelegate pipeline)
 {
-    public StreamSubscription AddEventHandler<THandler>()
-    {
-        eventHandlerRegistry.RegisterHandlersFrom(typeof(THandler));
-        return this;
-    }
-
     public async Task PollAsync(CancellationToken cancellationToken = default)
     {
-        var lastCheckpoint = await checkpointStore.GetCheckpointAsync(subscriptionId, cancellationToken);
+        var lastCheckpoint = await checkpointStore.GetCheckpointAsync(subscriptionId, cancellationToken).ConfigureAwait(false);
         if (lastCheckpoint == StreamPosition.End)
         {
-            if (streamSubscriptionType == StreamSubscriptionType.CatchUp)
-            {
-                await checkpointStore.SetCheckpointAsync(subscriptionId, StreamPosition.Start, cancellationToken);
-                lastCheckpoint = StreamPosition.Start;
-            }
-            else
-            {
-                var lastPosition = await subscriptionStreamReader.GetLastGlobalPositionAsync(cancellationToken);
-                await checkpointStore.SetCheckpointAsync(subscriptionId, lastPosition, cancellationToken);
-                lastCheckpoint = lastPosition;
-            }
+            lastCheckpoint = streamSubscriptionType == StreamSubscriptionType.CatchUp
+                ? StreamPosition.Start
+                : await subscriptionStreamReader.GetLastGlobalPositionAsync(cancellationToken).ConfigureAwait(false);
+            await checkpointStore.SetCheckpointAsync(subscriptionId, lastCheckpoint, cancellationToken).ConfigureAwait(false);
         }
 
-        await foreach (var @event in subscriptionStreamReader.FetchAsync(lastCheckpoint, cancellationToken))
+        await foreach (var @event in subscriptionStreamReader.FetchAsync(lastCheckpoint, cancellationToken).ConfigureAwait(false))
         {
-            //var context = new EventConsumeContext<object>(subscriptionId, @event.StreamId, @event.EventId, @event.Payload)
-            //{
-            //    Metadata = @event.Metadata,
-            //    GlobalPosition = @event.GlobalPosition,
-            //    StreamPosition = @event.StreamPosition,
-            //    Timestamp = @event.Timestamp
-            //};
             var globalPosition = @event.GlobalPosition;
-
             try
             {
-                foreach (var eventHandler in eventHandlerRegistry.GetHandlers(@event.Payload.GetType()))
-                {
-                    var handlerInstance = serviceProvider.GetService(eventHandler.HandlerType) ?? ActivatorUtilities.CreateInstance(serviceProvider, eventHandler.HandlerType);
-                }
-                globalPosition = await subscriptionStreamReader.GetLastGlobalPositionAsync(cancellationToken);
+                await pipeline(@event, cancellationToken).ConfigureAwait(false);
+                globalPosition = await subscriptionStreamReader.GetLastGlobalPositionAsync(cancellationToken).ConfigureAwait(false);
+                await checkpointStore.SetCheckpointAsync(subscriptionId, globalPosition, cancellationToken).ConfigureAwait(false);
             }
-            finally
+            catch when (errorHandling == SubscriptionErrorHandling.Ignore)
             {
-                await checkpointStore.SetCheckpointAsync(subscriptionId, globalPosition, cancellationToken);
+                await checkpointStore.SetCheckpointAsync(subscriptionId, globalPosition, cancellationToken).ConfigureAwait(false);
             }
         }
     }

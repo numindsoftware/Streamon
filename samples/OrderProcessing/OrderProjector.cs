@@ -7,17 +7,17 @@ using System.Text.Json;
 
 namespace OrderProcessing;
 
-internal class OrderProjector(TableClient tableClient, JsonSerializerOptions jsonSerializerOptions) : TableEntityEventProjector<OrderProjectionEntity>(tableClient),
+internal class OrderProjector(TableClient tableClient, JsonSerializerOptions jsonSerializerOptions) : TableEntityEventProjector<OrderProjectionEntity>(tableClient)
     //IEventAsyncInitialProjector<OrderPlaced, OrderProjectionEntity>,
     //IEventAsyncProjector<OrderCancelled, OrderProjectionEntity>,
     //IEventAsyncProjector<OrderShipped, OrderProjectionEntity>,
     //IEventAsyncProjector<OrderAccepted, OrderProjectionEntity>,
     //IEventAsyncProjector<OrderCompleted, OrderProjectionEntity>
-    IEventAsyncProjector<OrderPlaced>,
-    IEventAsyncProjector<OrderCancelled>,
-    IEventAsyncProjector<OrderShipped>,
-    IEventAsyncProjector<OrderAccepted>,
-    IEventAsyncProjector<OrderCompleted>
+    //IEventProjector<OrderPlaced>,
+    //IEventProjector<OrderCancelled>,
+    //IEventProjector<OrderShipped>,
+    //IEventProjector<OrderAccepted>,
+    //IEventProjector<OrderCompleted>
 {
     //public string GetIdentity(EventConsumeContext<OrderPlaced> @event, CancellationToken cancellationToken = default) => @event.Payload.OrderId;
     //public string GetIdentity(EventConsumeContext<OrderCancelled> @event, CancellationToken cancellationToken = default) => @event.Payload.OrderId;
