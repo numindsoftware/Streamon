@@ -8,11 +8,6 @@ public static class StreamSubscriptionBuilderExtensions
     /// <summary>
     /// Configures the <see cref="StreamSubscriptionBuilder"/> to use Azure Table Storage as the checkpoint store.
     /// </summary>
-    /// <param name="builder">The <see cref="StreamSubscriptionBuilder"/> to configure.</param>
-    /// <param name="connectionString">The connection string for the Azure Table Storage account.</param>
-    /// <param name="streamTableName">The name of the table used to store stream metadata.</param>
-    /// <param name="checkpointTableName">The name of the table used to store checkpoint data. If not specified, a default table name is used.</param>
-    /// <returns>The configured <see cref="StreamSubscriptionBuilder"/> instance.</returns>
     public static StreamSubscriptionBuilder UseTableStorageCheckpointStore(this StreamSubscriptionBuilder builder, string connectionString, string streamTableName, string? checkpointTableName = default)
     {
         checkpointTableName ??= TableCheckpointStore.DefaultCheckpointTableName;
@@ -23,16 +18,42 @@ public static class StreamSubscriptionBuilderExtensions
     /// <summary>
     /// Configures the <see cref="StreamSubscriptionBuilder"/> to use a Table Storage-based subscription stream reader.
     /// </summary>
-    /// <param name="builder">The <see cref="StreamSubscriptionBuilder"/> to configure.</param>
-    /// <param name="connectionString">The connection string for the Azure Table Storage account.</param>
-    /// <param name="streamTableName">The name of the table in Azure Table Storage that contains the stream data.</param>
-    /// <param name="configureOptions">An optional delegate to configure additional options for the <see cref="TableStreamStoreOptions"/>.</param>
-    /// <returns>The configured <see cref="StreamSubscriptionBuilder"/> instance.</returns>
     public static StreamSubscriptionBuilder UseTableStorageSubscriptionStreamReader(this StreamSubscriptionBuilder builder, string connectionString, string streamTableName, Action<TableStreamStoreOptions>? configureOptions = default)
     {
         var options = new TableStreamStoreOptions();
         configureOptions?.Invoke(options);
         builder.UseSubscriptionStreamReader(() => new TableSubscriptionStreamReader(new TableClient(connectionString, streamTableName), options));
         return builder;
+    }
+
+    /// <summary>
+    /// Registers a projection backed by Azure Table Storage. Partition key and row key are derived
+    /// from <typeparamref name="TState"/> domain properties via the provided selectors, keeping
+    /// key mapping explicit and type-safe.
+    /// </summary>
+    /// <typeparam name="TProjector">The projector type implementing
+    /// <see cref="IEventInitialProjector{TEvent, TState}"/> and/or
+    /// <see cref="IEventProjector{TEvent, TState}"/>.</typeparam>
+    /// <typeparam name="TState">The table entity type representing the projection state.</typeparam>
+    /// <param name="builder">The subscription builder to configure.</param>
+    /// <param name="connectionString">The Azure Table Storage connection string.</param>
+    /// <param name="tableName">The name of the table used to store projection state.</param>
+    /// <param name="partitionKeySelector">Selects the partition key value from a <typeparamref name="TState"/> instance.</param>
+    /// <param name="rowKeySelector">Selects the row key value from a <typeparamref name="TState"/> instance.</param>
+    /// <returns>The configured <see cref="StreamSubscriptionBuilder"/> instance.</returns>
+    public static StreamSubscriptionBuilder AddTableStorageProjection<TProjector, TState>(
+        this StreamSubscriptionBuilder builder,
+        string connectionString,
+        string tableName,
+        Func<TState, string> partitionKeySelector,
+        Func<TState, string> rowKeySelector)
+        where TProjector : class
+        where TState : class, ITableEntity, new()
+    {
+        return builder.AddProjection<TProjector, TState>(
+            () => new TableStorageProjectionStore<TState>(
+                new TableClient(connectionString, tableName),
+                partitionKeySelector,
+                rowKeySelector));
     }
 }

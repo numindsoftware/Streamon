@@ -39,7 +39,11 @@ public class StreamProvisionerBuilder
 
     public StreamProvisionerBuilder AddStreamTypeProvider<T>(JsonSerializerOptions? jsonSerializerOptions = default) where T : class, IStreamTypeProvider
     {
-        StreamTypeProviderBuilder = sp => ActivatorUtilities.CreateInstance<T>(sp, jsonSerializerOptions is null ? [] : [jsonSerializerOptions]);
+        StreamTypeProviderBuilder = sp =>
+        {
+            jsonSerializerOptions ??= sp.GetService<IOptions<JsonSerializerOptions>>()?.Value ?? new JsonSerializerOptions(JsonSerializerDefaults.Web);
+            return ActivatorUtilities.CreateInstance<T>(sp, jsonSerializerOptions is null ? [] : [jsonSerializerOptions]);
+        };
         return this;
     }
 }

@@ -46,8 +46,7 @@ public class StreamTypeProvider : IStreamTypeProvider
                 .SelectMany(static a => a.GetTypes())
                 .Where(t => !t.IsAbstract && !t.IsEnum && !t.IsInterface)
                 .Select(static t => new { Type = t, Attribute = t.GetCustomAttribute<EventTypeAttribute>() })
-                .Where(t => (t.Attribute?.Name ?? t.Type.Name) == name)
-                .SingleOrDefault() ?? throw new EventTypeNotFoundException(name);
+                .SingleOrDefault(t => (t.Attribute?.Name ?? t.Type.Name) == name) ?? throw new EventTypeNotFoundException(name);
             _eventTypesRegistry[name] = eventType = type.Type;
         }
         return JsonSerializer.Deserialize(data, eventType, _serializerOptions) ?? throw new StreamTypeProviderException(name, eventType, $"The event data couldn't be deserialized to type {eventType}");

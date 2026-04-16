@@ -1,13 +1,26 @@
-﻿namespace Streamon.Subscription;
+﻿using System.Reflection;
+using System.Text.Json;
+
+namespace Streamon.Subscription;
 
 public class StreamSubscriptionBuilder(SubscriptionId subscriptionId, StreamSubscriptionType streamSubscriptionType = default, SubscriptionErrorHandling errorHandling = default, EventDispatchType eventDispatchType = default)
 {
     private Func<ICheckpointStore>? _checkpointStoreFactory;
     private Func<ISubscriptionStreamReader>? _subscriptionStreamReaderFactory;
+    private Func<IStreamTypeProvider>? _streamTypeProviderFactory;
     private Func<Type, object>? _serviceResolver;
     private readonly List<Func<IEventHandler>> _handlerFactories = [];
     private readonly List<Type> _typedEventHandlerTypes = [];
     private EventPipelineBuilder EventPipelineBuilder { get; } = new();
+
+    public StreamSubscriptionBuilder UseStreamTypeProvider(IStreamTypeProvider typeProvider) =>
+        UseStreamTypeProvider(() => typeProvider);
+
+    public StreamSubscriptionBuilder UseStreamTypeProvider(Func<IStreamTypeProvider> factory)
+    {
+        _streamTypeProviderFactory = factory;
+        return this;
+    }
 
     /// <summary>
     /// Gets the subscription identity associated with this builder instance.
@@ -93,6 +106,67 @@ public class StreamSubscriptionBuilder(SubscriptionId subscriptionId, StreamSubs
     public StreamSubscriptionBuilder AddTypedEventHandler<T>() where T : class
     {
         _typedEventHandlerTypes.Add(typeof(T));
+        return this;
+    }
+
+    // ── Projection registration ─────────────────────────────────────────
+
+    /// <summary>
+    /// Registers a projection using the specified <see cref="IProjectionStore{TState}"/> instance.
+    /// The projector of type <typeparamref name="TProjector"/> is resolved via the service resolver
+    /// at build time. Use this overload when the store lifetime is managed externally.
+    /// </summary>
+    /// <typeparam name="TProjector">The projector type implementing
+    /// <see cref="IEventInitialProjector{TEvent, TState}"/> and/or
+    /// <see cref="IEventProjector{TEvent, TState}"/>.</typeparam>
+    /// <typeparam name="TState">The projection state type.</typeparam>
+    public StreamSubscriptionBuilder AddProjection<TProjector, TState>(IProjectionStore<TState> store)
+        where TProjector : class =>
+        AddProjection<TProjector, TState>(() => store);
+
+    /// <summary>
+    /// Registers a projection that resolves <see cref="IProjectionStore{TState}"/> via a factory delegate.
+    /// The projector of type <typeparamref name="TProjector"/> is resolved via the service resolver
+    /// at build time. The factory is invoked once during <see cref="Build"/>.
+    /// </summary>
+    /// <typeparam name="TProjector">The projector type implementing
+    /// <see cref="IEventInitialProjector{TEvent, TState}"/> and/or
+    /// <see cref="IEventProjector{TEvent, TState}"/>.</typeparam>
+    /// <typeparam name="TState">The projection state type.</typeparam>
+    public StreamSubscriptionBuilder AddProjection<TProjector, TState>(Func<IProjectionStore<TState>> storeFactory)
+        where TProjector : class
+    {
+        _handlerFactories.Add(() =>
+        {
+            var projector = ResolveService(typeof(TProjector));
+            var store = storeFactory();
+            var handler = new ProjectionEventHandler<TState>(subscriptionId, store);
+            handler.RegisterProjectorsFrom(projector);
+            return handler;
+        });
+        return this;
+    }
+
+    /// <summary>
+    /// Registers a projection where both the projector and <see cref="IProjectionStore{TState}"/> are
+    /// resolved from the service container at build time. Requires DI integration
+    /// (<see cref="ServiceCollectionExtensions.AddStreamSubscription"/>).
+    /// </summary>
+    /// <typeparam name="TProjector">The projector type implementing
+    /// <see cref="IEventInitialProjector{TEvent, TState}"/> and/or
+    /// <see cref="IEventProjector{TEvent, TState}"/>.</typeparam>
+    /// <typeparam name="TState">The projection state type.</typeparam>
+    public StreamSubscriptionBuilder AddProjection<TProjector, TState>()
+        where TProjector : class
+    {
+        _handlerFactories.Add(() =>
+        {
+            var projector = ResolveService(typeof(TProjector));
+            var store = (IProjectionStore<TState>)ResolveService(typeof(IProjectionStore<TState>));
+            var handler = new ProjectionEventHandler<TState>(subscriptionId, store);
+            handler.RegisterProjectorsFrom(projector);
+            return handler;
+        });
         return this;
     }
 

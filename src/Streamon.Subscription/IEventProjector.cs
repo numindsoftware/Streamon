@@ -1,24 +1,27 @@
 ﻿namespace Streamon.Subscription;
 
-//public interface IEventProjector
-//{
-//    Task ProjectAsync(Event @event, CancellationToken cancellationToken = default);
-//}
-
 /// <summary>
-///  using marking interfaces should make it easier to find the handlers and batch them together without explicitly having to implement them
+/// Marker interface for projector type scanning.
 /// </summary>
-/// <typeparam name="TEvent"></typeparam>
+/// <typeparam name="TEvent">The event type this projector handles.</typeparam>
 public interface IEventProjector<TEvent>;
 
+/// <summary>
+/// Defines a contract for updating existing projection state when an event is received.
+/// </summary>
+/// <typeparam name="TEvent">The event type that triggers a state update.</typeparam>
+/// <typeparam name="TState">The projection state type.</typeparam>
 public interface IEventProjector<TEvent, TState>
 {
     /// <summary>
-    ///     Handles the event asynchronously.
+    /// Applies the event to existing projection state, returning the updated state.
     /// </summary>
-    /// <param name="context">The context of the event.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>A task that represents the asynchronous operation.</returns>
     ValueTask<TState> ProjectAsync(TState state, EventHandlerContext<TEvent> @event, CancellationToken cancellationToken = default);
-    string GetIdentity(EventHandlerContext<TEvent> @event, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates a <typeparamref name="TState"/> key template with identity properties populated
+    /// from the event context. Used by <see cref="IProjectionStore{TState}.ReadAsync"/> to locate
+    /// existing state before applying the update.
+    /// </summary>
+    TState GetKey(EventHandlerContext<TEvent> @event, CancellationToken cancellationToken = default);
 }

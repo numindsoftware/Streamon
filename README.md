@@ -29,6 +29,7 @@ Streamon is not an Event Sourcing library, but it can be used as an Event/Stream
 * Soft and hard deletion modes
 * Global event positioning & tracking
 * Subscriptions
+* Projections (read model generation backed by storage providers)
 * Snapshots and Checkpoints
 
 ## To Do's
@@ -36,7 +37,6 @@ Streamon is not an Event Sourcing library, but it can be used as an Event/Stream
 * Telemetry
 * Relational Stores (Entity Framework?)
 * Claim Checks for large events
-* Stream Projections
 * Stream Sweeper (Archiving and Purging)
 
 ## Subscriptions
