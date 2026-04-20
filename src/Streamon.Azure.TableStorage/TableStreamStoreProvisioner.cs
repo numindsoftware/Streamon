@@ -15,9 +15,31 @@ public class TableStreamStoreProvisioner(TableServiceClient tableServiceClient, 
     {
         await tableServiceClient.CreateTableIfNotExistsAsync(name, cancellationToken);
         var tableClient = tableServiceClient.GetTableClient(name);
+        await SeedGlobalPositionEntityAsync(tableClient, cancellationToken).ConfigureAwait(false);
         return new TableStreamStore(tableClient, options);
     }
 
     public Task DeleteStore(string name, CancellationToken cancellationToken = default) =>
         tableServiceClient.DeleteTableAsync(name, cancellationToken);
+
+    /// <summary>
+    /// Seeds the <c>__GLOBAL__/SO-META</c> entity with <c>GlobalSequence = 0</c> if it does not already exist.
+    /// </summary>
+    private async Task SeedGlobalPositionEntityAsync(TableClient tableClient, CancellationToken cancellationToken)
+    {
+        var existing = await tableClient.GetEntityIfExistsAsync<GlobalPositionEntity>(
+            options.GlobalPartitionKey, options.GlobalMetaRowKey, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        if (!existing.HasValue)
+        {
+            var entity = new GlobalPositionEntity
+            {
+                PartitionKey = options.GlobalPartitionKey,
+                RowKey = options.GlobalMetaRowKey,
+                GlobalSequence = 0,
+                UpdatedOn = DateTimeOffset.UtcNow
+            };
+            await tableClient.AddEntityAsync(entity, cancellationToken).ConfigureAwait(false);
+        }
+    }
 }

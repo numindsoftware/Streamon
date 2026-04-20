@@ -6,6 +6,8 @@ namespace Streamon.Azure.TableStorage;
 
 public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions options) : IStreamStore
 {
+    private static readonly Random s_jitter = new();
+
     public event EventHandler<StreamEventArgs>? EventsAppended;
     public event EventHandler<StreamIdEventArgs>? StreamDeleted;
 
@@ -25,7 +27,7 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
 
     public async Task<IEnumerable<Event>> AppendEventsAsync(StreamId streamId, StreamPosition expectedPosition, IEnumerable<object> events, EventMetadata? metadata = null, CancellationToken cancellationToken = default)
     {
-        if (expectedPosition == StreamPosition.End) throw new StreamPositionOutOfRangeException(expectedPosition, $"Can't append events past the end position.");
+        if (expectedPosition.Value == StreamPosition.End.Value) throw new StreamPositionOutOfRangeException(expectedPosition, $"Can't append events past the end position.");
         if (events.Count() * 2 >= options.TransactionBatchSize + (options.TransactionBatchSize % 2) - 2) throw new BatchSizeExceededException(events.Count(), options.TransactionBatchSize, $"The number of events to append exceeds the maximum batch size of {options.TransactionBatchSize}.");
 
         var streamResult = await tableClient.GetEntityIfExistsAsync<StreamEntity>(streamId.Value, options.StreamEntityRowKey, cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -34,10 +36,13 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
         
         StreamPosition currentPosition = StreamPosition.From(streamEntity.Sequence);
         if (currentPosition != expectedPosition) throw new StreamConcurrencyException(expectedPosition, currentPosition);
-        var globalPosition = StreamPosition.From(await FetchLatestGlobalPositionAsync(streamEntity.GlobalSequence, cancellationToken).ConfigureAwait(false));
+
+        var eventCount = events.Count();
+        var globalPosition = await AllocateGlobalPositionAsync(eventCount, cancellationToken).ConfigureAwait(false);
 
         var batchId = BatchId.New();
         List<TableTransactionAction> streamTransactions = [];
+        List<TableTransactionAction> indexTransactions = [];
         List<Event> eventEnvelopes = [];
         foreach (var @event in events)
         {
@@ -48,6 +53,10 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
             EventIdEntity eventIdEntity = new() { PartitionKey = streamId.Value, RowKey = eventEnvelope.EventId.ToEventIdEntityRowKey(options), Sequence = currentPosition.Value };
             streamTransactions.Add(new(TableTransactionActionType.Add, eventEntity));
             streamTransactions.Add(new(TableTransactionActionType.Add, eventIdEntity));
+
+            var indexEntity = @event.ToGlobalEventIndexEntity(eventEnvelope.EventId, streamId, batchId, currentPosition, globalPosition, metadata, options.StreamTypeProvider, options);
+            indexTransactions.Add(new(TableTransactionActionType.Add, indexEntity));
+
             eventEnvelopes.Add(eventEnvelope);
         }
 
@@ -57,8 +66,13 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
         streamTransactions.Add(new(TableTransactionActionType.UpsertMerge, streamEntity));
         try
         {
+            // Batch 1: stream partition (events + ID guards + stream header)
             var response = await tableClient.SubmitTransactionAsync(streamTransactions, cancellationToken).ConfigureAwait(false);
             response.Value.ToList().ForEach(r => r.ThrowOnError($"Failed to upsert stream with status code {r.Status}"));
+
+            // Batch 2: GEVT partition (fat index rows) — eventually consistent with stream partition
+            var indexResponse = await tableClient.SubmitTransactionAsync(indexTransactions, cancellationToken).ConfigureAwait(false);
+            indexResponse.Value.ToList().ForEach(r => r.ThrowOnError($"Failed to write global event index with status code {r.Status}"));
         }
         catch (TableTransactionFailedException ex) when (ex.ErrorCode == TableErrorCode.EntityAlreadyExists || ex.ErrorCode == TableErrorCode.InvalidDuplicateRow)
         {
@@ -132,18 +146,40 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
     }
 
     /// <summary>
-    /// This is extremely inneficient, a full table scan is performed to get the latest global position.
-    /// A better approach would be to store the latest global position in a separate entity and update it on each append.
+    /// Atomically allocates a contiguous range of global positions by performing an ETag-guarded
+    /// read-modify-write on the <c>__GLOBAL__/SO-META</c> entity. Retries with randomized jitter
+    /// on ETag conflicts up to <see cref="TableStreamStoreOptions.MaxGlobalPositionRetries"/> times.
     /// </summary>
-    /// <param name="globalPosition"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    private async Task<long> FetchLatestGlobalPositionAsync(long globalPosition, CancellationToken cancellationToken = default)
+    /// <param name="eventCount">Number of positions to allocate.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The global position <em>before</em> the allocated range (caller should call <c>.Next()</c> for the first event).</returns>
+    private async Task<StreamPosition> AllocateGlobalPositionAsync(int eventCount, CancellationToken cancellationToken = default)
     {
-        List<StreamEntity> entities = [];
-        await foreach (var page in tableClient.QueryAsync<StreamEntity>(e => e.RowKey == options.StreamEntityRowKey && e.GlobalSequence >= globalPosition, cancellationToken: cancellationToken).AsPages())
-            globalPosition = Math.Max(page.Values.Select(e => e.GlobalSequence).DefaultIfEmpty(globalPosition).Max(), globalPosition);
-            
-        return globalPosition;
+        for (int attempt = 0; attempt < options.MaxGlobalPositionRetries; attempt++)
+        {
+            var response = await tableClient.GetEntityIfExistsAsync<GlobalPositionEntity>(
+                options.GlobalPartitionKey, options.GlobalMetaRowKey, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+            if (!response.HasValue)
+                throw new TableStorageOperationException($"Global position entity ({options.GlobalPartitionKey}/{options.GlobalMetaRowKey}) not found. Ensure the store was provisioned via CreateStoreAsync.");
+
+            var entity = response.Value!;
+            var startPosition = StreamPosition.From(entity.GlobalSequence);
+            entity.GlobalSequence += eventCount;
+            entity.UpdatedOn = DateTimeOffset.UtcNow;
+
+            try
+            {
+                await tableClient.UpdateEntityAsync(entity, entity.ETag, TableUpdateMode.Replace, cancellationToken).ConfigureAwait(false);
+                return startPosition;
+            }
+            catch (RequestFailedException ex) when (ex.Status == 412) // Precondition Failed — ETag mismatch
+            {
+                // Randomized jitter: 1–50 ms × (attempt + 1)
+                var delay = s_jitter.Next(1, 50) * (attempt + 1);
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        throw new GlobalPositionAllocationException(options.MaxGlobalPositionRetries);
     }
 }

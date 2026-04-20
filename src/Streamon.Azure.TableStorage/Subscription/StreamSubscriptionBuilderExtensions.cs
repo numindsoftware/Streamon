@@ -1,4 +1,5 @@
-﻿using Azure.Data.Tables;
+﻿using System.Text.Json;
+using Azure.Data.Tables;
 using Streamon.Subscription;
 
 namespace Streamon.Azure.TableStorage.Subscription;
@@ -29,7 +30,9 @@ public static class StreamSubscriptionBuilderExtensions
     /// <summary>
     /// Registers a projection backed by Azure Table Storage. Partition key and row key are derived
     /// from <typeparamref name="TState"/> domain properties via the provided selectors, keeping
-    /// key mapping explicit and type-safe.
+    /// key mapping explicit and type-safe. Properties of types not natively supported by Table Storage
+    /// (complex objects, collections) are automatically serialized to JSON strings using the
+    /// configured <paramref name="jsonSerializerOptions"/>.
     /// </summary>
     /// <typeparam name="TProjector">The projector type implementing
     /// <see cref="IEventInitialProjector{TEvent, TState}"/> and/or
@@ -40,13 +43,16 @@ public static class StreamSubscriptionBuilderExtensions
     /// <param name="tableName">The name of the table used to store projection state.</param>
     /// <param name="partitionKeySelector">Selects the partition key value from a <typeparamref name="TState"/> instance.</param>
     /// <param name="rowKeySelector">Selects the row key value from a <typeparamref name="TState"/> instance.</param>
+    /// <param name="jsonSerializerOptions">Optional JSON serializer options for complex property serialization.
+    /// When <c>null</c>, <see cref="System.Text.Json"/> defaults are used.</param>
     /// <returns>The configured <see cref="StreamSubscriptionBuilder"/> instance.</returns>
     public static StreamSubscriptionBuilder AddTableStorageProjection<TProjector, TState>(
         this StreamSubscriptionBuilder builder,
         string connectionString,
         string tableName,
         Func<TState, string> partitionKeySelector,
-        Func<TState, string> rowKeySelector)
+        Func<TState, string> rowKeySelector,
+        JsonSerializerOptions? jsonSerializerOptions = null)
         where TProjector : class
         where TState : class, ITableEntity, new()
     {
@@ -54,6 +60,7 @@ public static class StreamSubscriptionBuilderExtensions
             () => new TableStorageProjectionStore<TState>(
                 new TableClient(connectionString, tableName),
                 partitionKeySelector,
-                rowKeySelector));
+                rowKeySelector,
+                jsonSerializerOptions));
     }
 }

@@ -17,7 +17,7 @@ public readonly struct StreamPosition :
     public StreamPosition Next() => new(Value + 1);
     public static StreamPosition From(long value) => new(value >= -1 ? value : -1);
 
-    public static readonly StreamPosition Any = new(-1);
+    public static readonly StreamPosition Any = new(-1L);
     public static readonly StreamPosition Start = new(0);
     public static readonly StreamPosition End = new(long.MaxValue);
 

@@ -31,8 +31,7 @@ public class ContainerFixture : IAsyncLifetime
 
         services.AddStreamSubscription(SubscriptionId.From("test-subscription"))
             .UseTableStorageCheckpointStore(TestContainer.GetConnectionString(), nameof(IntegrationStreamTests))
-            .UseTableStorageSubscriptionStreamReader(TestContainer.GetConnectionString(), nameof(IntegrationStreamTests))
-            .AddEventHandler<OrderInMemoryProjector>();
+            .UseTableStorageSubscriptionStreamReader(TestContainer.GetConnectionString(), nameof(IntegrationStreamTests));
 
         ServiceProvider = services.BuildServiceProvider();
 

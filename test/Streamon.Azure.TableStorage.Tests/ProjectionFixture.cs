@@ -29,18 +29,22 @@ public class ProjectionFixture : IAsyncLifetime
 
         var connectionString = TestContainer.GetConnectionString();
 
+        var typeProvider = new StreamTypeProvider()
+            .RegisterTypes<OrderCaptured>()
+            .RegisterTypes<OrderDetailsUpdated>();
+
         services.AddStreamon()
             .AddStreamTypeProvider([typeof(ProjectionFixture).Assembly])
             .AddTableStorageStreamStore(connectionString, options =>
             {
-                options.StreamTypeProvider = new StreamTypeProvider().RegisterTypes<OrderCaptured>();
+                options.StreamTypeProvider = typeProvider;
             });
 
         services.AddStreamSubscription(SubscriptionId.From("projection-sub"), StreamSubscriptionType.CatchUp)
             .UseTableStorageCheckpointStore(connectionString, StreamTableName)
             .UseTableStorageSubscriptionStreamReader(connectionString, StreamTableName, options =>
             {
-                options.StreamTypeProvider = new StreamTypeProvider().RegisterTypes<OrderCaptured>();
+                options.StreamTypeProvider = typeProvider;
             })
             .AddTableStorageProjection<OrderTableProjector, OrderProjectionEntity>(
                 connectionString,
@@ -52,12 +56,18 @@ public class ProjectionFixture : IAsyncLifetime
 
         StreamStoreProvisioner = ServiceProvider.GetRequiredService<IStreamStoreProvisioner>();
         SubscriptionManager = ServiceProvider.GetRequiredService<SubscriptionManager>();
-        ProjectionTableClient = new TableClient(connectionString, ProjectionTableName);
+
+        // Expose the same projection store used by the subscription pipeline so tests
+        // read projections through the same serialization/deserialization path as clients.
+        ProjectionStore = new TableStorageProjectionStore<OrderProjectionEntity>(
+            new TableClient(connectionString, ProjectionTableName),
+            partitionKeySelector: s => s.OrderId,
+            rowKeySelector: s => s.OrderId);
     }
 
     public IServiceProvider ServiceProvider { get; private set; } = null!;
     public AzuriteContainer TestContainer { get; private set; }
     public IStreamStoreProvisioner StreamStoreProvisioner { get; private set; } = null!;
     public SubscriptionManager SubscriptionManager { get; private set; } = null!;
-    public TableClient ProjectionTableClient { get; private set; } = null!;
+    public IProjectionStore<OrderProjectionEntity> ProjectionStore { get; private set; } = null!;
 }

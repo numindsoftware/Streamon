@@ -1,5 +1,6 @@
 using Azure;
 using Azure.Data.Tables;
+using Streamon.Tests.Fixtures;
 
 namespace Streamon.Azure.TableStorage.Tests;
 
@@ -11,8 +12,8 @@ public class OrderProjectionEntity : ITableEntity
     public ETag ETag { get; set; }
 
     public string OrderId { get; set; } = default!;
-    public string Product { get; set; } = default!;
-    public double Price { get; set; }
     public string? Tracking { get; set; }
     public bool IsCancelled { get; set; }
+    public OrderAddress? ShippingAddress { get; set; }
+    public List<OrderItem>? Items { get; set; }
 }

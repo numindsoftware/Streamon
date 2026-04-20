@@ -15,6 +15,17 @@ internal static class EventExtensions
             typeProvider.ResolveEvent(eventEntity.Type, eventEntity.Data),
             typeProvider.ResolveMetadata(eventEntity.Metadata));
 
+    public static Event ToEvent(this GlobalEventIndexEntity indexEntity, IStreamTypeProvider typeProvider) =>
+        new(
+            StreamId.From(indexEntity.StreamId),
+            EventId.From(indexEntity.EventId),
+            StreamPosition.From(indexEntity.Sequence),
+            StreamPosition.From(indexEntity.GlobalSequence),
+            indexEntity.CreatedOn,
+            BatchId.From(indexEntity.BatchId),
+            typeProvider.ResolveEvent(indexEntity.Type, indexEntity.Data),
+            typeProvider.ResolveMetadata(indexEntity.Metadata));
+
     public static IEnumerable<Event> ToEvents(this IEnumerable<EventEntity> eventEntities, TableStreamStoreOptions options) =>
         eventEntities
             .Where(e => e.RowKey.StartsWith(options.EventEntityRowKeyPrefix))
@@ -27,6 +38,25 @@ internal static class EventExtensions
         {
             PartitionKey = streamId.Value,
             RowKey = globalPosition.ToEventEntityRowKey(options),
+            Sequence = position.Value,
+            GlobalSequence = globalPosition.Value,
+            EventId = eventId.Value,
+            BatchId = batchId.Value,
+            Data = eventTypeInfo.Data,
+            Type = eventTypeInfo.Type,
+            Metadata = streamTypeProvider.SerializeMetadata(@event.GetEventMetadata(metadata)),
+            CreatedOn = DateTimeOffset.Now,
+        };
+    }
+
+    public static GlobalEventIndexEntity ToGlobalEventIndexEntity(this object @event, EventId eventId, StreamId streamId, BatchId batchId, StreamPosition position, StreamPosition globalPosition, EventMetadata? metadata, IStreamTypeProvider streamTypeProvider, TableStreamStoreOptions options)
+    {
+        var eventTypeInfo = streamTypeProvider.SerializeEvent(@event);
+        return new GlobalEventIndexEntity
+        {
+            PartitionKey = options.GlobalEventIndexPartitionKey,
+            RowKey = globalPosition.ToGlobalEventIndexRowKey(),
+            StreamId = streamId.Value,
             Sequence = position.Value,
             GlobalSequence = globalPosition.Value,
             EventId = eventId.Value,
@@ -52,9 +82,12 @@ internal static class EventExtensions
     public static string ToEventEntityRowKey(this StreamPosition position, TableStreamStoreOptions options) =>
         $"{options.EventEntityRowKeyPrefix}{position.Value:00000000000000000000}";
 
-    public static string ToEventIdEntityRowKey(this EventId eventId, TableStreamStoreOptions options) => 
+    public static string ToEventIdEntityRowKey(this EventId eventId, TableStreamStoreOptions options) =>
         $"{options.EventIdEntityRowKeyPrefix}{eventId.Value:0}";
 
-    public static string ToSnapshotEntityRowKey(this Type projectionType, TableStreamStoreOptions options) => 
+    public static string ToSnapshotEntityRowKey(this Type projectionType, TableStreamStoreOptions options) =>
         $"{options.SnapshotEntityPrefix}{projectionType.Name}";
+
+    public static string ToGlobalEventIndexRowKey(this StreamPosition position) =>
+        $"{position.Value:00000000000000000000}";
 }

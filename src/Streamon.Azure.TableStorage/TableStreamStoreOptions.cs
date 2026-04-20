@@ -35,6 +35,24 @@ public class TableStreamStoreOptions
     /// Thre prefix to use in the RowKey colums for snapshot entities. Defaults to "SO-SNAP-".
     /// </summary>
     public string SnapshotEntityPrefix { get; set; } = "SO-SNAP-";
+
+    /// <summary>
+    /// The PartitionKey for the singleton global position entity. Defaults to "__GLOBAL__".
+    /// </summary>
+    public string GlobalPartitionKey { get; set; } = "__GLOBAL__";
+    /// <summary>
+    /// The RowKey for the singleton global position entity. Defaults to "SO-META".
+    /// </summary>
+    public string GlobalMetaRowKey { get; set; } = "SO-META";
+    /// <summary>
+    /// Maximum number of ETag-based retries (with jitter) when allocating a global position range. Defaults to 10.
+    /// </summary>
+    public int MaxGlobalPositionRetries { get; set; } = 10;
+    /// <summary>
+    /// The PartitionKey used for the Global Event Index (GEVT) partition. Defaults to "__GEVT__".
+    /// </summary>
+    public string GlobalEventIndexPartitionKey { get; set; } = "__GEVT__";
+
     /// <summary>
     /// Set a delegate to be called when events are appended to a stream.
     /// </summary>

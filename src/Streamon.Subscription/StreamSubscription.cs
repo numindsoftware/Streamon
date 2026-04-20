@@ -19,7 +19,7 @@ public class StreamSubscription(
             await checkpointStore.SetCheckpointAsync(subscriptionId, lastCheckpoint, cancellationToken).ConfigureAwait(false);
         }
 
-        await foreach (var @event in subscriptionStreamReader.FetchAsync(lastCheckpoint, cancellationToken).ConfigureAwait(false))
+        await foreach (var @event in subscriptionStreamReader.FetchAsync(lastCheckpoint.Next(), cancellationToken).ConfigureAwait(false))
         {
             var globalPosition = @event.GlobalPosition;
             try
