@@ -9,7 +9,7 @@ namespace Streamon.Azure.TableStorage.Tests;
 public class ContainerFixture : IAsyncLifetime
 {
     public ContainerFixture() => 
-        TestContainer = new AzuriteBuilder()
+        TestContainer = new AzuriteBuilder("mcr.microsoft.com/azure-storage/azurite:latest")
         .WithName("streamon-azurite")
         .WithPortBinding(10002, true)
         .Build();

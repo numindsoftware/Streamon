@@ -13,7 +13,7 @@ public class ProjectionFixture : IAsyncLifetime
     public const string ProjectionTableName = "OrderProjections";
 
     public ProjectionFixture() =>
-        TestContainer = new AzuriteBuilder()
+        TestContainer = new AzuriteBuilder("mcr.microsoft.com/azure-storage/azurite:latest")
             .WithName("streamon-azurite-projections")
             .WithPortBinding(10002, true)
             .Build();
