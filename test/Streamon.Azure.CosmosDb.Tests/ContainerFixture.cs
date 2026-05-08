@@ -11,9 +11,9 @@ public class ContainerFixture : IAsyncLifetime
         .WithName("streamon-cosmosdb")
         .Build();
 
-    public async Task DisposeAsync() => await TestContainer.DisposeAsync();
+    public async ValueTask DisposeAsync() => await TestContainer.DisposeAsync();
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         
         await TestContainer.StartAsync();

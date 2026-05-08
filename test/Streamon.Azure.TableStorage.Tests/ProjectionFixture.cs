@@ -18,10 +18,10 @@ public class ProjectionFixture : IAsyncLifetime
             .WithPortBinding(10002, true)
             .Build();
 
-    public async Task DisposeAsync() =>
+    public async ValueTask DisposeAsync() =>
         await TestContainer.DisposeAsync();
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         ServiceCollection services = new();
 

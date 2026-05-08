@@ -7,7 +7,7 @@ public class CosmosIntegrationStreamTests(ContainerFixture containerFixture) : I
     [Fact]
     public async Task AppendsNewEventsToStream()
     {
-        var store = await containerFixture.StreamStoreProvisioner.CreateStoreAsync(nameof(CosmosIntegrationStreamTests));
+        var store = await containerFixture.StreamStoreProvisioner.CreateStoreAsync(nameof(CosmosIntegrationStreamTests), cancellationToken: TestContext.Current.CancellationToken);
         IEnumerable<object> events = 
         [
             OrderEvents.OrderCaptured,
@@ -15,7 +15,7 @@ public class CosmosIntegrationStreamTests(ContainerFixture containerFixture) : I
             OrderEvents.OrderShipped,
             OrderEvents.OrderFulfilled
         ];
-        var stream = await store.AppendEventsAsync(new("order-123"), StreamPosition.Start, events);
+        var stream = await store.AppendEventsAsync(new("order-123"), StreamPosition.Start, events, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotEmpty(stream);
         Assert.NotEqual(stream.First().EventId, default);

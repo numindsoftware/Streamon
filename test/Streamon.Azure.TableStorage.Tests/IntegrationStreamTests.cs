@@ -3,15 +3,15 @@ using Streamon.Tests.Fixtures;
 
 namespace Streamon.Azure.TableStorage.Tests;
 
-[TestCaseOrderer("Streamon.Tests.Fixtures.PriorityTestCollectionOrderer", "Streamon.Tests.Fixtures")]
+[TestCaseOrderer(typeof(PriorityOrderer))]
 public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassFixture<ContainerFixture>
 {
     [Fact, Priority(1)]
     public async Task CreateStoreThroughServiceCollection()
     {
 
-        var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync("TestCreated");
-        var stream = await store.AppendEventsAsync(new StreamId("order-123"), StreamPosition.Start, [OrderEvents.OrderCaptured]);
+        var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync("TestCreated", cancellationToken: TestContext.Current.CancellationToken);
+        var stream = await store.AppendEventsAsync(new StreamId("order-123"), StreamPosition.Start, [OrderEvents.OrderCaptured], cancellationToken: TestContext.Current.CancellationToken);
         Assert.NotEmpty(stream);
         Assert.NotEqual(stream.First().EventId, default);
     }
@@ -19,14 +19,14 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
     [Fact, Priority(2)]
     public async Task AppendsEventsToNewStream()
     {
-        var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync(nameof(IntegrationStreamTests));
+        var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync(nameof(IntegrationStreamTests), cancellationToken: TestContext.Current.CancellationToken);
         IEnumerable<object> events = 
         [
             OrderEvents.OrderCaptured,
             OrderEvents.OrderConfirmed,
             OrderEvents.OrderShipped
         ];
-        var stream = await store.AppendEventsAsync(new StreamId("order-123"), StreamPosition.Start, events);
+        var stream = await store.AppendEventsAsync(new StreamId("order-123"), StreamPosition.Start, events, cancellationToken: TestContext.Current.CancellationToken);
         Assert.NotEmpty(stream);
         Assert.Equal(events.Count(), stream.Count());
     }
@@ -34,7 +34,7 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
     [Fact, Priority(3)]
     public async Task AppendBatchedEventsToNewStream()
     {
-        var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync(nameof(IntegrationStreamTests));
+        var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync(nameof(IntegrationStreamTests), cancellationToken: TestContext.Current.CancellationToken);
         IEnumerable<object> events =
         [
             OrderEvents.OrderCaptured,
@@ -47,7 +47,7 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
             OrderEvents.OrderCancelled,
             OrderEvents.OrderCancelled
         ];
-        var stream = await store.AppendEventsAsync(new StreamId("order-124"), StreamPosition.Start, events);
+        var stream = await store.AppendEventsAsync(new StreamId("order-124"), StreamPosition.Start, events, cancellationToken: TestContext.Current.CancellationToken);
         Assert.NotEmpty(stream);
         Assert.Equal(events.Count(), stream.Count());
     }
@@ -55,7 +55,7 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
     [Fact, Priority(5)]
     public async Task FailsWhenAddingDuplicateEvents()
     {
-        var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync(nameof(IntegrationStreamTests));
+        var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync(nameof(IntegrationStreamTests), cancellationToken: TestContext.Current.CancellationToken);
         IEnumerable<object> events =
         [
             new TestEvent1("1"),
@@ -63,14 +63,14 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
             new TestEvent2("3"),
             new TestEvent1("2") // this should fail
         ];
-        await Assert.ThrowsAsync<DuplicateEventException>(() => store.AppendEventsAsync(new StreamId("order-125"), StreamPosition.Start, events));
+        await Assert.ThrowsAsync<DuplicateEventException>(() => store.AppendEventsAsync(new StreamId("order-125"), StreamPosition.Start, events, cancellationToken: TestContext.Current.CancellationToken));
     }
 
     [Fact, Priority(6)]
     public async Task ReadsFullStreamFromStoreEvents()
     {
-        var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync(nameof(IntegrationStreamTests));
-        var readStream = await store.FetchEventsAsync(new StreamId("order-124"));
+        var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync(nameof(IntegrationStreamTests), cancellationToken: TestContext.Current.CancellationToken);
+        var readStream = await store.FetchEventsAsync(new StreamId("order-124"), cancellationToken: TestContext.Current.CancellationToken);
         Assert.NotEmpty(readStream);
         Assert.Equal(9, readStream.Count());
     }
@@ -78,16 +78,16 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
     [Fact, Priority(8)]
     public async Task SoftDeletesExistingStream()
     {
-        var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync(nameof(IntegrationStreamTests));
-        var totalDeleted = await store.DeleteStreamAsync(new StreamId("order-124"), StreamPosition.Any);
+        var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync(nameof(IntegrationStreamTests), cancellationToken: TestContext.Current.CancellationToken);
+        var totalDeleted = await store.DeleteStreamAsync(new StreamId("order-124"), StreamPosition.Any, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(9, totalDeleted);
     }
 
     [Fact, Priority(9)]
     public async Task HardDeletesExistingStream()
     {
-        var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync(nameof(IntegrationStreamTests));
-        var totalDeleted = await store.DeleteStreamAsync(new StreamId("order-123"), StreamPosition.Any);
+        var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync(nameof(IntegrationStreamTests), cancellationToken: TestContext.Current.CancellationToken);
+        var totalDeleted = await store.DeleteStreamAsync(new StreamId("order-123"), StreamPosition.Any, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(3, totalDeleted);
     }
 

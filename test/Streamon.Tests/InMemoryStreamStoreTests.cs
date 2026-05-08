@@ -14,7 +14,7 @@ public class InMemoryStreamStoreTests
         StreamId streamId = new("order-123");
         IEnumerable<object> events = [OrderEvents.OrderCaptured, OrderEvents.OrderConfirmed];
 
-        var stream = await eventStore.AppendEventsAsync(streamId, StreamPosition.Start, events);
+        var stream = await eventStore.AppendEventsAsync(streamId, StreamPosition.Start, events, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotEmpty(stream);
         Assert.NotEqual(stream.First().EventId, default);
@@ -29,8 +29,8 @@ public class InMemoryStreamStoreTests
         var provider = services.BuildServiceProvider();
 
         var provisioner = provider.GetRequiredService<IStreamStoreProvisioner>();
-        var store = await provisioner.CreateStoreAsync();
-        var stream = await store.AppendEventsAsync(new StreamId("order-123"), StreamPosition.Start, [OrderEvents.OrderCaptured]);
+        var store = await provisioner.CreateStoreAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var stream = await store.AppendEventsAsync(new StreamId("order-123"), StreamPosition.Start, [OrderEvents.OrderCaptured], cancellationToken: TestContext.Current.CancellationToken);
         Assert.NotEmpty(stream);
         Assert.NotEqual(stream.First().EventId, default);
     }

@@ -11,6 +11,6 @@ public class EventHandlerTests
         var streamId = StreamId.From("order-123");
         EventHandlerContext<OrderShipped> context = new(subscriptionId, streamId, EventId.New(), StreamPosition.Start, StreamPosition.Start, DateTimeOffset.UtcNow, BatchId.New(), OrderEvents.OrderShipped);
         TestEventHandler eventHandler = new();
-        await eventHandler.HandleAsync(context);
+        await eventHandler.HandleAsync(context, TestContext.Current.CancellationToken);
     }
 }

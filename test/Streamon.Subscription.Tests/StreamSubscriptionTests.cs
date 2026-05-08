@@ -57,7 +57,7 @@ public class StreamSubscriptionTests
         var handler = new TrackingHandler();
         var subscription = CreateSubscription([handler], StreamSubscriptionType.CatchUp);
 
-        await subscription.PollAsync();
+        await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(_reader.Events.Count, handler.HandledEvents.Count);
     }
@@ -67,11 +67,11 @@ public class StreamSubscriptionTests
     {
         var subscription = CreateSubscription([], StreamSubscriptionType.CatchUp);
 
-        await subscription.PollAsync();
+        await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
-        var checkpoint = await _checkpointStore.GetCheckpointAsync(SubId);
+        var checkpoint = await _checkpointStore.GetCheckpointAsync(SubId, cancellationToken: TestContext.Current.CancellationToken);
         // No handlers, but events still flow — checkpoint advances to last global position
-        var lastGlobal = await _reader.GetLastGlobalPositionAsync();
+        var lastGlobal = await _reader.GetLastGlobalPositionAsync(cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(lastGlobal, checkpoint);
     }
 
@@ -80,10 +80,10 @@ public class StreamSubscriptionTests
     {
         var subscription = CreateSubscription([], StreamSubscriptionType.Live);
 
-        await subscription.PollAsync();
+        await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
-        var checkpoint = await _checkpointStore.GetCheckpointAsync(SubId);
-        var lastGlobal = await _reader.GetLastGlobalPositionAsync();
+        var checkpoint = await _checkpointStore.GetCheckpointAsync(SubId, cancellationToken: TestContext.Current.CancellationToken);
+        var lastGlobal = await _reader.GetLastGlobalPositionAsync(cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(lastGlobal, checkpoint);
     }
 
@@ -93,7 +93,7 @@ public class StreamSubscriptionTests
         var handler = new TrackingHandler();
         var subscription = CreateSubscription([handler], StreamSubscriptionType.Live);
 
-        await subscription.PollAsync();
+        await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Empty(handler.HandledEvents);
     }
@@ -104,10 +104,10 @@ public class StreamSubscriptionTests
         var handler = new TrackingHandler();
         var subscription = CreateSubscription([handler], StreamSubscriptionType.CatchUp);
 
-        await subscription.PollAsync();
+        await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
-        var checkpoint = await _checkpointStore.GetCheckpointAsync(SubId);
-        var lastGlobal = await _reader.GetLastGlobalPositionAsync();
+        var checkpoint = await _checkpointStore.GetCheckpointAsync(SubId, cancellationToken: TestContext.Current.CancellationToken);
+        var lastGlobal = await _reader.GetLastGlobalPositionAsync(cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(lastGlobal, checkpoint);
     }
 
@@ -117,12 +117,12 @@ public class StreamSubscriptionTests
         var handler = new TrackingHandler();
         var subscription = CreateSubscription([handler], StreamSubscriptionType.CatchUp);
 
-        await subscription.PollAsync();
+        await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
         var countAfterFirst = handler.HandledEvents.Count;
 
         _reader.Events.Add(new Event(StreamId.From("order-125"), EventId.New(), StreamPosition.From(1), StreamPosition.From(7), DateTimeOffset.Now, BatchId.New(), OrderEvents.OrderCaptured));
 
-        await subscription.PollAsync();
+        await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(countAfterFirst + 1, handler.HandledEvents.Count);
         Assert.Equal(StreamId.From("order-125"), handler.HandledEvents[^1].StreamId);
@@ -136,7 +136,7 @@ public class StreamSubscriptionTests
         var failingHandler = new FailingHandler(failOnNth: 1);
         var subscription = CreateSubscription([failingHandler], errorHandling: SubscriptionErrorHandling.Throw);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => subscription.PollAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -145,9 +145,9 @@ public class StreamSubscriptionTests
         var failingHandler = new FailingHandler(failOnNth: 1);
         var subscription = CreateSubscription([failingHandler], errorHandling: SubscriptionErrorHandling.Throw);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => subscription.PollAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken));
 
-        var checkpoint = await _checkpointStore.GetCheckpointAsync(SubId);
+        var checkpoint = await _checkpointStore.GetCheckpointAsync(SubId, cancellationToken: TestContext.Current.CancellationToken);
         // Checkpoint was set to Start during initialization but not advanced past the failed event
         Assert.Equal(StreamPosition.Start, checkpoint);
     }
@@ -158,7 +158,7 @@ public class StreamSubscriptionTests
         var failingHandler = new FailingHandler(failOnNth: 1);
         var subscription = CreateSubscription([failingHandler], errorHandling: SubscriptionErrorHandling.Ignore);
 
-        var exception = await Record.ExceptionAsync(() => subscription.PollAsync());
+        var exception = await Record.ExceptionAsync(() => subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Null(exception);
     }
@@ -169,10 +169,10 @@ public class StreamSubscriptionTests
         var failingHandler = new FailingHandler(failOnNth: 1);
         var subscription = CreateSubscription([failingHandler], errorHandling: SubscriptionErrorHandling.Ignore);
 
-        await subscription.PollAsync();
+        await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
-        var checkpoint = await _checkpointStore.GetCheckpointAsync(SubId);
-        var lastGlobal = await _reader.GetLastGlobalPositionAsync();
+        var checkpoint = await _checkpointStore.GetCheckpointAsync(SubId, cancellationToken: TestContext.Current.CancellationToken);
+        var lastGlobal = await _reader.GetLastGlobalPositionAsync(cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(lastGlobal, checkpoint);
     }
 
@@ -183,7 +183,7 @@ public class StreamSubscriptionTests
         var failingHandler = new FailingHandler(failOnNth: 2);
         var subscription = CreateSubscription([failingHandler], errorHandling: SubscriptionErrorHandling.Ignore);
 
-        await subscription.PollAsync();
+        await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(_reader.Events.Count, failingHandler.CallCount);
     }
@@ -198,7 +198,7 @@ public class StreamSubscriptionTests
         var handler2 = new OrderRecordingHandler("B", order);
         var subscription = CreateSubscription([handler1, handler2]);
 
-        await subscription.PollAsync();
+        await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // For each event, A should run before B
         for (var i = 0; i < _reader.Events.Count; i++)
@@ -215,7 +215,7 @@ public class StreamSubscriptionTests
         var handler2 = new TrackingHandler();
         var subscription = CreateSubscription([handler1, handler2]);
 
-        await subscription.PollAsync();
+        await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(_reader.Events.Count, handler1.HandledEvents.Count);
         Assert.Equal(_reader.Events.Count, handler2.HandledEvents.Count);
@@ -230,7 +230,7 @@ public class StreamSubscriptionTests
         typedHandler.RegisterHandlersFrom(new TestEventHandler());
         var subscription = CreateSubscription([typedHandler]);
 
-        var exception = await Record.ExceptionAsync(() => subscription.PollAsync());
+        var exception = await Record.ExceptionAsync(() => subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Null(exception);
     }
@@ -244,7 +244,7 @@ public class StreamSubscriptionTests
         typedHandler.RegisterHandlersFrom(new TestEventHandler());
         var subscription = CreateSubscription([typedHandler, tracking]);
 
-        await subscription.PollAsync();
+        await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // All events still flow through the tracking handler
         Assert.Equal(_reader.Events.Count, tracking.HandledEvents.Count);
@@ -259,7 +259,7 @@ public class StreamSubscriptionTests
         var middleware = new TrackingMiddleware();
         var subscription = CreateSubscription([handler], middlewares: [middleware]);
 
-        await subscription.PollAsync();
+        await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(_reader.Events.Count, middleware.BeforeEvents.Count);
         Assert.Equal(_reader.Events.Count, middleware.AfterEvents.Count);
@@ -275,7 +275,7 @@ public class StreamSubscriptionTests
         var handler = new TrackingHandler();
         var subscription = CreateSubscription([handler], middlewares: [outer, inner]);
 
-        await subscription.PollAsync();
+        await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // Per event: outer-before, inner-before, inner-after, outer-after
         Assert.Equal("outer-before", order[0]);
@@ -291,7 +291,7 @@ public class StreamSubscriptionTests
         var middleware = new ShortCircuitMiddleware();
         var subscription = CreateSubscription([handler], middlewares: [middleware]);
 
-        await subscription.PollAsync();
+        await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(_reader.Events.Count, middleware.InterceptedEvents.Count);
         Assert.Empty(handler.HandledEvents);
@@ -304,7 +304,7 @@ public class StreamSubscriptionTests
         var handler = new TrackingHandler();
         var subscription = CreateSubscription([handler], middlewares: [failingMiddleware], errorHandling: SubscriptionErrorHandling.Throw);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => subscription.PollAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken));
         Assert.Empty(handler.HandledEvents);
     }
 
@@ -315,7 +315,7 @@ public class StreamSubscriptionTests
         var handler = new TrackingHandler();
         var subscription = CreateSubscription([handler], middlewares: [failingMiddleware], errorHandling: SubscriptionErrorHandling.Ignore);
 
-        var exception = await Record.ExceptionAsync(() => subscription.PollAsync());
+        var exception = await Record.ExceptionAsync(() => subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Null(exception);
     }
@@ -329,7 +329,7 @@ public class StreamSubscriptionTests
         var middleware = new ConcurrentDispatchMiddleware();
         var subscription = CreateSubscription([handler], middlewares: [middleware]);
 
-        await subscription.PollAsync();
+        await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(_reader.Events.Count, handler.HandledEvents.Count);
     }
@@ -347,7 +347,7 @@ public class StreamSubscriptionTests
             .AddEventHandler(handler)
             .Build();
 
-        var exception = await Record.ExceptionAsync(() => subscription.PollAsync());
+        var exception = await Record.ExceptionAsync(() => subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Null(exception);
         Assert.Empty(handler.HandledEvents);
@@ -358,10 +358,10 @@ public class StreamSubscriptionTests
     {
         var subscription = CreateSubscription([]);
 
-        await subscription.PollAsync();
+        await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
-        var checkpoint = await _checkpointStore.GetCheckpointAsync(SubId);
-        var lastGlobal = await _reader.GetLastGlobalPositionAsync();
+        var checkpoint = await _checkpointStore.GetCheckpointAsync(SubId, cancellationToken: TestContext.Current.CancellationToken);
+        var lastGlobal = await _reader.GetLastGlobalPositionAsync(cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(lastGlobal, checkpoint);
     }
 

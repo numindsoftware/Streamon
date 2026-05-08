@@ -1,14 +1,14 @@
-﻿using Xunit;
-using Xunit.Abstractions;
+﻿using Xunit.Internal;
 using Xunit.Sdk;
+using Xunit.v3;
 
 namespace Streamon.Tests.Fixtures;
 
 public class AlphabeticalTestsOrderer : ITestCollectionOrderer, ITestCaseOrderer
 {
-    public IEnumerable<TTestCase> OrderTestCases<TTestCase>(IEnumerable<TTestCase> testCases) where TTestCase : ITestCase =>
-        testCases.OrderBy(tc => tc.TestMethod.Method.Name);
+    public IReadOnlyCollection<TTestCase> OrderTestCases<TTestCase>(IReadOnlyCollection<TTestCase> testCases) where TTestCase : notnull, ITestCase =>
+        testCases.OrderBy(tc => tc.TestMethodName).CastOrToReadOnlyCollection();
 
-    public IEnumerable<ITestCollection> OrderTestCollections(IEnumerable<ITestCollection> testCollections) =>
-        testCollections.OrderBy(tc => tc.DisplayName, StringComparer.OrdinalIgnoreCase);
+    public IReadOnlyCollection<TTestCollection> OrderTestCollections<TTestCollection>(IReadOnlyCollection<TTestCollection> testCollections) where TTestCollection : ITestCollection =>
+        testCollections.OrderBy(tc => tc.TestCollectionDisplayName, StringComparer.OrdinalIgnoreCase).CastOrToReadOnlyCollection();
 }

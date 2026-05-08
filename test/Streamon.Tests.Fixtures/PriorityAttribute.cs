@@ -1,6 +1,4 @@
-﻿#pragma warning disable IDE0130 // Namespace does not match folder structure
-namespace Xunit;
-#pragma warning restore IDE0130 // Namespace does not match folder structure
+﻿namespace Streamon.Tests.Fixtures;
 
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = false)]
 public class PriorityAttribute(int order) : Attribute
