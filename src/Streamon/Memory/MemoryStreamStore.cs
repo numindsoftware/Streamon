@@ -19,7 +19,7 @@ public class MemoryStreamStore : IStreamStore
         return Task.FromResult<long>(events.Count);
     }
 
-    public Task<IEnumerable<Event>> FetchEventsAsync(StreamId streamId, StreamPosition startPosition = default, StreamPosition endPosition = default, CancellationToken cancellationToken = default)
+    public Task<IEnumerable<Event>> FetchEventsAsync(StreamId streamId, StreamPosition startPosition = default, StreamPosition endPosition = default, bool includeDeleted = false, CancellationToken cancellationToken = default)
     {
         endPosition = endPosition == default ? StreamPosition.End : endPosition;
         if (!_streams.TryGetValue(streamId, out var existingEvents)) throw new StreamNotFoundException(streamId);

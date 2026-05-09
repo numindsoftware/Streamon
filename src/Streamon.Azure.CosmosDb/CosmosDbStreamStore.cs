@@ -86,7 +86,7 @@ internal class CosmosDbStreamStore(Container container, CosmosDbStreamStoreOptio
         return streamDocument.Position.Value;
     }
 
-    public Task<IEnumerable<Event>> FetchEventsAsync(StreamId streamId, StreamPosition startPosition = default, StreamPosition endPosition = default, CancellationToken cancellationToken = default)
+    public Task<IEnumerable<Event>> FetchEventsAsync(StreamId streamId, StreamPosition startPosition = default, StreamPosition endPosition = default, bool includeDeleted = false, CancellationToken cancellationToken = default)
     {
         endPosition = endPosition == default ? StreamPosition.End : endPosition;
 

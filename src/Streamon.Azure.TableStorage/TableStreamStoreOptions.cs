@@ -49,9 +49,9 @@ public class TableStreamStoreOptions
     /// </summary>
     public int MaxGlobalPositionRetries { get; set; } = 10;
     /// <summary>
-    /// The PartitionKey used for the Global Event Index (GEVT) partition. Defaults to "__GEVT__".
+    /// The PartitionKey used for the Global Event Index (__GLOBAL-EVENT-INDEX__) partition. Defaults to "__GLOBAL-EVENT-INDEX__".
     /// </summary>
-    public string GlobalEventIndexPartitionKey { get; set; } = "__GEVT__";
+    public string GlobalEventIndexPartitionKey { get; set; } = "__GLOBAL-EVENT-INDEX__";
 
     /// <summary>
     /// Set a delegate to be called when events are appended to a stream.

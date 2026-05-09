@@ -14,6 +14,7 @@ public class TableSubscriptionStreamReader(TableClient tableClient, TableStreamS
             cancellationToken: cancellationToken))
         {
             if (cancellationToken.IsCancellationRequested) yield break;
+            if (indexEntity.IsDeleted) continue;
             yield return indexEntity.ToEvent(options.StreamTypeProvider);
         }
     }

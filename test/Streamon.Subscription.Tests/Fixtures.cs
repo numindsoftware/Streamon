@@ -102,7 +102,7 @@ internal class SubscriptionStreamReader : ISubscriptionStreamReader
     {
         foreach (var item in Events)
         {
-            if (item.GlobalPosition > position)
+            if (item.GlobalPosition >= position)
             {
                 yield return await Task.FromResult(item);
             }

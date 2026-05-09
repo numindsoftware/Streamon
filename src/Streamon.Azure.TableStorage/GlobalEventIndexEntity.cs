@@ -4,7 +4,7 @@ using Azure.Data.Tables;
 namespace Streamon.Azure.TableStorage;
 
 /// <summary>
-/// Fat denormalized index entity stored in the GEVT partition.
+/// Fat denormalized index entity stored in the global events partition.
 /// One row per event, RowKey is the zero-padded global position for natural sort order.
 /// </summary>
 internal class GlobalEventIndexEntity : ITableEntity
@@ -22,4 +22,8 @@ internal class GlobalEventIndexEntity : ITableEntity
     public required string Data { get; set; }
     public string? Metadata { get; set; }
     public DateTimeOffset CreatedOn { get; set; } = DateTimeOffset.Now;
+    /// <summary>
+    /// Set to <c>true</c> when the owning stream is soft-deleted. Subscription readers skip entries with this flag set.
+    /// </summary>
+    public bool IsDeleted { get; set; }
 }

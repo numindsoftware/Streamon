@@ -11,18 +11,18 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
     public event EventHandler<StreamEventArgs>? EventsAppended;
     public event EventHandler<StreamIdEventArgs>? StreamDeleted;
 
-    public async Task<IEnumerable<Event>> FetchEventsAsync(StreamId streamId, StreamPosition startPosition = default, StreamPosition endPosition = default, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Event>> FetchEventsAsync(StreamId streamId, StreamPosition startPosition = default, StreamPosition endPosition = default, bool includeDeleted = false, CancellationToken cancellationToken = default)
     {
         endPosition = endPosition == default ? StreamPosition.End : endPosition;
-        
+
         var streamEntityResponse = await tableClient.GetEntityIfExistsAsync<StreamEntity>(streamId.Value, options.StreamEntityRowKey, cancellationToken: cancellationToken).ConfigureAwait(false);
         if (!streamEntityResponse.HasValue) throw new StreamNotFoundException(streamId);
+        if (!includeDeleted && streamEntityResponse.Value!.IsDeleted) return [];
 
-        List<EventEntity> entities = [];
-        await foreach (var entity in tableClient.QueryAsync<EventEntity>(e => e.PartitionKey == streamId.Value && e.Sequence >= startPosition.Value && e.Sequence <= endPosition.Value, cancellationToken: cancellationToken)) entities.Add(entity);
-        if (entities.Count == 0) throw new StreamNotFoundException(streamId);
+        List<EventEntity> eventEntities = [];
+        await foreach (var eventEntity in tableClient.QueryAsync<EventEntity>(e => e.PartitionKey == streamId.Value && e.Sequence >= startPosition.Value && e.Sequence <= endPosition.Value, cancellationToken: cancellationToken)) eventEntities.Add(eventEntity);
         
-        return entities.ToEvents(options);
+        return eventEntities.ToEvents(options);
     }
 
     public async Task<IEnumerable<Event>> AppendEventsAsync(StreamId streamId, StreamPosition expectedPosition, IEnumerable<object> events, EventMetadata? metadata = null, CancellationToken cancellationToken = default)
@@ -70,7 +70,7 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
             var response = await tableClient.SubmitTransactionAsync(streamTransactions, cancellationToken).ConfigureAwait(false);
             response.Value.ToList().ForEach(r => r.ThrowOnError($"Failed to upsert stream with status code {r.Status}"));
 
-            // Batch 2: GEVT partition (fat index rows) — eventually consistent with stream partition
+            // Batch 2: global events partition (fat index rows) — eventually consistent with stream partition
             var indexResponse = await tableClient.SubmitTransactionAsync(indexTransactions, cancellationToken).ConfigureAwait(false);
             indexResponse.Value.ToList().ForEach(r => r.ThrowOnError($"Failed to write global event index with status code {r.Status}"));
         }
@@ -101,6 +101,23 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
             streamEntity.DeletedOn = DateTimeOffset.Now;
             var deleteResponse = await tableClient.UpdateEntityAsync(streamEntity, streamEntity.ETag, cancellationToken: cancellationToken).ConfigureAwait(false);
             deleteResponse.ThrowOnError($"Failed to soft delete stream with status code {deleteResponse.Status}");
+
+            // Mark all global events index entries for this stream as deleted (same partition — can batch)
+            List<TableTransactionAction> indexUpdates = [];
+            await foreach (var indexEntity in tableClient.QueryAsync<GlobalEventIndexEntity>(
+                e => e.PartitionKey == options.GlobalEventIndexPartitionKey && e.StreamId == streamId.Value,
+                cancellationToken: cancellationToken).ConfigureAwait(false))
+            {
+                indexEntity.IsDeleted = true;
+                indexUpdates.Add(new(TableTransactionActionType.UpdateMerge, indexEntity));
+            }
+            foreach (var batch in GenerateUpdateBatch(indexUpdates))
+            {
+                var response = await tableClient.SubmitTransactionAsync(batch, cancellationToken: cancellationToken).ConfigureAwait(false);
+                response.Value.ToList().ForEach(r => r.ThrowOnError($"Failed to soft delete global event index entries with status code {r.Status}"));
+            }
+
+            OnStreamDeleted(streamId);
             return streamEntity.Sequence;
         }
         else
@@ -115,6 +132,22 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
                 var response = await tableClient.SubmitTransactionAsync(batch, cancellationToken: cancellationToken).ConfigureAwait(false);
                 response.Value.ToList().ForEach(r => r.ThrowOnError($"Failed to delete stream entities with status code {r.Status}"));
             }
+
+            // Hard-delete all global events index entries for this stream
+            List<ITableEntity> indexEntities = [];
+            await foreach (var indexEntity in tableClient.QueryAsync<GlobalEventIndexEntity>(
+                e => e.PartitionKey == options.GlobalEventIndexPartitionKey && e.StreamId == streamId.Value,
+                cancellationToken: cancellationToken).ConfigureAwait(false))
+            {
+                indexEntities.Add(indexEntity);
+            }
+            foreach (var batch in GenerateDeleteBatch(indexEntities))
+            {
+                var response = await tableClient.SubmitTransactionAsync(batch, cancellationToken: cancellationToken).ConfigureAwait(false);
+                response.Value.ToList().ForEach(r => r.ThrowOnError($"Failed to delete global event index entries with status code {r.Status}"));
+            }
+
+            OnStreamDeleted(streamId);
             return deletableEntities.Count;
         }
     }
@@ -136,6 +169,21 @@ public class TableStreamStore(TableClient tableClient, TableStreamStoreOptions o
         foreach (var entity in tableEntities)
         {
             batch.Add(new(TableTransactionActionType.Delete, entity));
+            if (batch.Count >= options.TransactionBatchSize)
+            {
+                yield return batch;
+                batch.Clear();
+            }
+        }
+        if (batch.Count > 0) yield return batch;
+    }
+
+    private IEnumerable<IEnumerable<TableTransactionAction>> GenerateUpdateBatch(IEnumerable<TableTransactionAction> actions)
+    {
+        List<TableTransactionAction> batch = [];
+        foreach (var action in actions)
+        {
+            batch.Add(action);
             if (batch.Count >= options.TransactionBatchSize)
             {
                 yield return batch;
