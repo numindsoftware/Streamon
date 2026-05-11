@@ -3,6 +3,7 @@
 	<PropertyGroup>
 		<IsTestProject>true</IsTestProject>
 		<OutputType>Exe</OutputType>
+		<TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
 	</PropertyGroup>
 
 	<ItemGroup>
