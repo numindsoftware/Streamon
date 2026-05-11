@@ -199,8 +199,8 @@ public class StreamSubscriptionBuilder(SubscriptionId subscriptionId, StreamSubs
         {
             if (eventDispatchType == EventDispatchType.Concurrent)
             {
-                var tasks = handlers.Select(async handler => handler.HandleAsync(@event, cancellationToken));
-                await Task.WhenAll(tasks);
+                var tasks = handlers.Select(handler => handler.HandleAsync(@event, cancellationToken));
+                await Task.WhenAll(tasks).ConfigureAwait(false);
             }
             else
             {
