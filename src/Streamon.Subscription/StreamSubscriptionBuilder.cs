@@ -5,10 +5,13 @@ namespace Streamon.Subscription;
 
 public class StreamSubscriptionBuilder(SubscriptionId subscriptionId, StreamSubscriptionType streamSubscriptionType = default, SubscriptionErrorHandling errorHandling = default, EventDispatchType eventDispatchType = default)
 {
-    private Func<ICheckpointStore>? _checkpointStoreFactory;
-    private Func<ISubscriptionStreamReader>? _subscriptionStreamReaderFactory;
+    private Func<string, ISubscriptionStreamReader>? _subscriptionStreamReaderFactory;
+    private Func<string, ICheckpointStore>? _checkpointStoreFactory;
+    private Func<string, IEventInbox>? _eventInboxFactory;
+
     private Func<IStreamTypeProvider>? _streamTypeProviderFactory;
     private Func<Type, object>? _serviceResolver;
+    private Func<string, string, string> _nameConvention = (prefix, suffix) => prefix + suffix;
     private readonly List<Func<IEventHandler>> _handlerFactories = [];
     private readonly List<Type> _typedEventHandlerTypes = [];
     private EventPipelineBuilder EventPipelineBuilder { get; } = new();
@@ -28,24 +31,19 @@ public class StreamSubscriptionBuilder(SubscriptionId subscriptionId, StreamSubs
     public SubscriptionId SubscriptionId => subscriptionId;
 
     /// <summary>
-    /// Configures the subscription to use the specified <see cref="ICheckpointStore"/> instance.
+    /// Overrides how component names are composed from the registration-time prefix
+    /// (e.g. <c>"StreamonCheckpoint"</c>) and the provisioning-time suffix
+    /// (e.g. <c>"Contoso"</c>). Default: <c>(p, s) =&gt; p + s</c>, yielding
+    /// <c>"StreamonCheckpointContoso"</c>.
     /// </summary>
-    public StreamSubscriptionBuilder UseCheckpointStore(ICheckpointStore store) =>
-        UseCheckpointStore(() => store);
-
-    /// <summary>
-    /// Configures the subscription to use the specified <see cref="ISubscriptionStreamReader"/> instance.
-    /// </summary>
-    public StreamSubscriptionBuilder UseSubscriptionStreamReader(ISubscriptionStreamReader reader) =>
-        UseSubscriptionStreamReader(() => reader);
-
-    /// <summary>
-    /// Configures the subscription to resolve <see cref="ICheckpointStore"/> via a factory delegate.
-    /// The factory is invoked once during <see cref="Build"/> and can close over any external state.
-    /// </summary>
-    public StreamSubscriptionBuilder UseCheckpointStore(Func<ICheckpointStore> factory)
+    /// <remarks>
+    /// Applied uniformly to the stream-reader, checkpoint-store, and event-inbox table names.
+    /// When the suffix is empty (no name passed to the provisioner), the convention should
+    /// return the prefix unchanged so existing registrations remain backward compatible.
+    /// </remarks>
+    public StreamSubscriptionBuilder UseNamingConvention(Func<string, string, string> convention)
     {
-        _checkpointStoreFactory = factory;
+        _nameConvention = convention ?? throw new ArgumentNullException(nameof(convention));
         return this;
     }
 
@@ -53,13 +51,45 @@ public class StreamSubscriptionBuilder(SubscriptionId subscriptionId, StreamSubs
     /// Configures the subscription to resolve <see cref="ISubscriptionStreamReader"/> via a factory delegate.
     /// The factory is invoked once during <see cref="Build"/> and can close over any external state.
     /// </summary>
-    public StreamSubscriptionBuilder UseSubscriptionStreamReader(Func<ISubscriptionStreamReader> factory)
+    public StreamSubscriptionBuilder UseSubscriptionStreamReader(Func<string, ISubscriptionStreamReader> factory)
     {
         _subscriptionStreamReaderFactory = factory;
         return this;
     }
 
-    // ── Strategy C: Service resolver (set by DI integration layer) ──────
+    /// <summary>
+    /// Configures the subscription to use the specified <see cref="ISubscriptionStreamReader"/> instance.
+    /// </summary>
+    public StreamSubscriptionBuilder UseSubscriptionStreamReader(ISubscriptionStreamReader reader) =>
+        UseSubscriptionStreamReader(_ => reader);
+
+    /// <summary>
+    /// Configures the subscription to resolve <see cref="ICheckpointStore"/> via a factory delegate.
+    /// The factory is invoked once during <see cref="Build"/> and can close over any external state.
+    /// </summary>
+    public StreamSubscriptionBuilder UseCheckpointStore(Func<string, ICheckpointStore> factory)
+    {
+        _checkpointStoreFactory = factory;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the subscription to use the specified <see cref="ICheckpointStore"/> instance.
+    /// </summary>
+    public StreamSubscriptionBuilder UseCheckpointStore(ICheckpointStore store) =>
+        UseCheckpointStore(_ => store);
+
+    public StreamSubscriptionBuilder UseEventInbox(Func<string, IEventInbox> factory)
+    {
+        _eventInboxFactory = factory;
+        return this;
+    }
+
+    public StreamSubscriptionBuilder UseEventInbox(IEventInbox inbox)
+    {
+        _eventInboxFactory = _ => inbox;
+        return this;
+    }
 
     /// <summary>
     /// Sets a general-purpose service resolver used to create handler instances registered via
@@ -186,11 +216,11 @@ public class StreamSubscriptionBuilder(SubscriptionId subscriptionId, StreamSubs
     /// and/or service resolver. Throws <see cref="InvalidOperationException"/> if required
     /// infrastructure components have not been configured.
     /// </summary>
-    public StreamSubscription Build()
+    public StreamSubscription Build(string suffix = "")
     {
-        var checkpointStore = _checkpointStoreFactory?.Invoke()
+        var checkpointStore = _checkpointStoreFactory?.Invoke(suffix)
             ?? throw new InvalidOperationException("No checkpoint store configured. Call UseCheckpointStore before building.");
-        var subscriptionStreamReader = _subscriptionStreamReaderFactory?.Invoke()
+        var subscriptionStreamReader = _subscriptionStreamReaderFactory?.Invoke(suffix)
             ?? throw new InvalidOperationException("No subscription stream reader configured. Call UseSubscriptionStreamReader before building.");
 
         List<IEventHandler> handlers = ResolveHandlers();
@@ -231,6 +261,9 @@ public class StreamSubscriptionBuilder(SubscriptionId subscriptionId, StreamSubs
 
         return handlers;
     }
+
+    /// <summary>Composes a component name from its registration-time prefix and a provisioner-supplied suffix.</summary>
+    public string ComposeName(string prefix, string suffix) => _nameConvention(prefix, suffix);
 
     private object ResolveService(Type type) =>
         _serviceResolver?.Invoke(type)

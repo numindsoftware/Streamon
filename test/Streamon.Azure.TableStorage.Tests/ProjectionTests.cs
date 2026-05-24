@@ -32,7 +32,7 @@ public class ProjectionTests(ProjectionFixture fixture) : IClassFixture<Projecti
     [Fact, Priority(2)]
     public async Task ProjectsInitialStateFromOrderCaptured()
     {
-        var subscription = fixture.SubscriptionManager.Get(SubscriptionId.From("projection-sub"));
+        var subscription = await fixture.SubscriptionProvisioner.CreateSubscriptionAsync(SubscriptionId.From("projection-sub"), cancellationToken: TestContext.Current.CancellationToken);
         await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         var entity = await fixture.ProjectionStore.ReadAsync(new OrderProjectionEntity { OrderId = "1" }, cancellationToken: TestContext.Current.CancellationToken);
@@ -77,7 +77,7 @@ public class ProjectionTests(ProjectionFixture fixture) : IClassFixture<Projecti
             [new OrderShipped("3", "T9999999999")],
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var subscription = fixture.SubscriptionManager.Get(SubscriptionId.From("projection-sub"));
+        var subscription = await fixture.SubscriptionProvisioner.CreateSubscriptionAsync(SubscriptionId.From("projection-sub"), cancellationToken: TestContext.Current.CancellationToken);
         await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         var entity = await fixture.ProjectionStore.ReadAsync(new OrderProjectionEntity { OrderId = "3" }, cancellationToken: TestContext.Current.CancellationToken);
@@ -116,7 +116,7 @@ public class ProjectionTests(ProjectionFixture fixture) : IClassFixture<Projecti
             ],
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var subscription = fixture.SubscriptionManager.Get(SubscriptionId.From("projection-sub"));
+        var subscription = await fixture.SubscriptionProvisioner.CreateSubscriptionAsync(SubscriptionId.From("projection-sub"), cancellationToken: TestContext.Current.CancellationToken);
         await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         var entity = await fixture.ProjectionStore.ReadAsync(new OrderProjectionEntity { OrderId = "4" }, cancellationToken: TestContext.Current.CancellationToken);
@@ -140,7 +140,7 @@ public class ProjectionTests(ProjectionFixture fixture) : IClassFixture<Projecti
             [new OrderItemsAdded("4", [new OrderItem("Monitor Stand", 1, 79.99m)])],
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var subscription = fixture.SubscriptionManager.Get(SubscriptionId.From("projection-sub"));
+        var subscription = await fixture.SubscriptionProvisioner.CreateSubscriptionAsync(SubscriptionId.From("projection-sub"), cancellationToken: TestContext.Current.CancellationToken);
         await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         var entity = await fixture.ProjectionStore.ReadAsync(new OrderProjectionEntity { OrderId = "4" }, cancellationToken: TestContext.Current.CancellationToken);
@@ -164,7 +164,7 @@ public class ProjectionTests(ProjectionFixture fixture) : IClassFixture<Projecti
             [new OrderItemsCancelled("4", ["Mouse", "Bundle"])],
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var subscription = fixture.SubscriptionManager.Get(SubscriptionId.From("projection-sub"));
+        var subscription = await fixture.SubscriptionProvisioner.CreateSubscriptionAsync(SubscriptionId.From("projection-sub"), cancellationToken: TestContext.Current.CancellationToken);
         await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         var entity = await fixture.ProjectionStore.ReadAsync(new OrderProjectionEntity { OrderId = "4" }, cancellationToken: TestContext.Current.CancellationToken);
@@ -188,7 +188,7 @@ public class ProjectionTests(ProjectionFixture fixture) : IClassFixture<Projecti
             [new OrderItemsReplaced("4", [new OrderItem("Laptop", 1, 1299.99m)])],
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var subscription = fixture.SubscriptionManager.Get(SubscriptionId.From("projection-sub"));
+        var subscription = await fixture.SubscriptionProvisioner.CreateSubscriptionAsync(SubscriptionId.From("projection-sub"), cancellationToken: TestContext.Current.CancellationToken);
         await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         var entity = await fixture.ProjectionStore.ReadAsync(new OrderProjectionEntity { OrderId = "4" }, cancellationToken: TestContext.Current.CancellationToken);
@@ -211,7 +211,7 @@ public class ProjectionTests(ProjectionFixture fixture) : IClassFixture<Projecti
             [new OrderItemsCancelled("4", ["Laptop"])],
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var subscription = fixture.SubscriptionManager.Get(SubscriptionId.From("projection-sub"));
+        var subscription = await fixture.SubscriptionProvisioner.CreateSubscriptionAsync(SubscriptionId.From("projection-sub"), cancellationToken: TestContext.Current.CancellationToken);
         await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         var entity = await fixture.ProjectionStore.ReadAsync(new OrderProjectionEntity { OrderId = "4" }, cancellationToken: TestContext.Current.CancellationToken);
@@ -231,7 +231,7 @@ public class ProjectionTests(ProjectionFixture fixture) : IClassFixture<Projecti
             [new OrderAddressChanged("1", new OrderAddress("123 Main St", "Springfield", "62704"))],
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var subscription = fixture.SubscriptionManager.Get(SubscriptionId.From("projection-sub"));
+        var subscription = await fixture.SubscriptionProvisioner.CreateSubscriptionAsync(SubscriptionId.From("projection-sub"), cancellationToken: TestContext.Current.CancellationToken);
         await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         var entity = await fixture.ProjectionStore.ReadAsync(new OrderProjectionEntity { OrderId = "1" }, cancellationToken: TestContext.Current.CancellationToken);
@@ -253,7 +253,7 @@ public class ProjectionTests(ProjectionFixture fixture) : IClassFixture<Projecti
             [new OrderAddressChanged("1", new OrderAddress("456 Oak Ave", "Shelbyville", "62565"))],
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var subscription = fixture.SubscriptionManager.Get(SubscriptionId.From("projection-sub"));
+        var subscription = await fixture.SubscriptionProvisioner.CreateSubscriptionAsync(SubscriptionId.From("projection-sub"), cancellationToken: TestContext.Current.CancellationToken);
         await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         var entity = await fixture.ProjectionStore.ReadAsync(new OrderProjectionEntity { OrderId = "1" }, cancellationToken: TestContext.Current.CancellationToken);

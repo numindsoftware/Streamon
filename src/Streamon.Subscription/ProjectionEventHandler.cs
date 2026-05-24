@@ -32,6 +32,7 @@ public class ProjectionEventHandler<TState>(
         {
             var context = EventHandlerContext<TEvent>.From(subscriptionId, @event);
             var state = projector.Project(context, ct);
+            StampTrackingPosition(state, @event);
             await projectionStore.WriteAsync(state, ct).ConfigureAwait(false);
         };
         return this;
@@ -51,11 +52,25 @@ public class ProjectionEventHandler<TState>(
             var keyState = projector.GetKey(context, ct);
             var existingState = await projectionStore.ReadAsync(keyState, ct).ConfigureAwait(false);
             if (existingState is null) return;
+            if (HasAlreadyApplied(existingState, @event)) return;
             var updatedState = await projector.ProjectAsync(existingState, context, ct).ConfigureAwait(false);
+            StampTrackingPosition(updatedState, @event);
             await projectionStore.WriteAsync(updatedState, ct).ConfigureAwait(false);
         };
         return this;
     }
+
+    private static void StampTrackingPosition(TState state, Event @event)
+    {
+        if (state is IProjectionTrackable trackable)
+        {
+            trackable.ProjectionTrackingPosition = @event.GlobalPosition.Value;
+        }
+    }
+
+    private static bool HasAlreadyApplied(TState state, Event @event) =>
+        state is IProjectionTrackable trackable
+            && trackable.ProjectionTrackingPosition >= @event.GlobalPosition.Value;
 
     /// <summary>
     /// Scans <paramref name="projectorInstance"/> for all <see cref="IEventInitialProjector{TEvent, TState}"/>

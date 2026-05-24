@@ -9,21 +9,48 @@ public static class StreamSubscriptionBuilderExtensions
     /// <summary>
     /// Configures the <see cref="StreamSubscriptionBuilder"/> to use Azure Table Storage as the checkpoint store.
     /// </summary>
-    public static StreamSubscriptionBuilder UseTableStorageCheckpointStore(this StreamSubscriptionBuilder builder, string connectionString, string streamTableName, string? checkpointTableName = default)
+    public static StreamSubscriptionBuilder UseTableStorageCheckpointStore(
+        this StreamSubscriptionBuilder builder,
+        string connectionString,
+        string streamTableName,                                  // prefix for the *paired* stream name
+        string? checkpointTableName = default)
     {
         checkpointTableName ??= TableCheckpointStore.DefaultCheckpointTableName;
-        builder.UseCheckpointStore(() => new TableCheckpointStore(new TableClient(connectionString, checkpointTableName), streamTableName));
+        builder.UseCheckpointStore(suffix =>
+        {
+            var checkpointTable = builder.ComposeName(checkpointTableName, suffix);
+            var pairedStreamName = builder.ComposeName(streamTableName, suffix);
+            return new TableCheckpointStore(
+                new TableClient(connectionString, checkpointTable),
+                pairedStreamName);
+        });
         return builder;
     }
 
     /// <summary>
     /// Configures the <see cref="StreamSubscriptionBuilder"/> to use a Table Storage-based subscription stream reader.
     /// </summary>
-    public static StreamSubscriptionBuilder UseTableStorageSubscriptionStreamReader(this StreamSubscriptionBuilder builder, string connectionString, string streamTableName, Action<TableStreamStoreOptions>? configureOptions = default)
+    public static StreamSubscriptionBuilder UseTableStorageSubscriptionStreamReader(
+        this StreamSubscriptionBuilder builder,
+        string connectionString,
+        string streamTableName,
+        Action<TableStreamStoreOptions>? configureOptions = default)
     {
         var options = new TableStreamStoreOptions();
         configureOptions?.Invoke(options);
-        builder.UseSubscriptionStreamReader(() => new TableSubscriptionStreamReader(new TableClient(connectionString, streamTableName), options));
+        builder.UseSubscriptionStreamReader(suffix => new TableSubscriptionStreamReader(
+            new TableClient(connectionString, builder.ComposeName(streamTableName, suffix)), options));
+        return builder;
+    }
+
+    public static StreamSubscriptionBuilder UseTableStorageEventInbox(
+        this StreamSubscriptionBuilder builder,
+        string connectionString,
+        string? inboxTableName = default)
+    {
+        inboxTableName ??= TableStorageEventInbox.DefaultInboxTableName;
+        builder.UseEventInbox(suffix => new TableStorageEventInbox(
+            new TableClient(connectionString, builder.ComposeName(inboxTableName, suffix))));
         return builder;
     }
 

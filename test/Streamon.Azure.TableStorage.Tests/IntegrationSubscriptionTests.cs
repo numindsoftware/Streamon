@@ -182,9 +182,9 @@ public class IntegrationSubscriptionTests(ContainerFixture containerFixture) : I
     }
 
     [Fact, Priority(11)]
-    public void SubscriptionManagerResolvesRegisteredSubscription()
+    public async Task SubscriptionProvisionerResolvesRegisteredSubscription()
     {
-        var subscription = containerFixture.SubscriptionManager.Get(SubscriptionId.From("test-subscription"));
+        var subscription = await containerFixture.SubscriptionProvisioner.CreateSubscriptionAsync(SubscriptionId.From("test-subscription"), cancellationToken: TestContext.Current.CancellationToken);
         Assert.NotNull(subscription);
     }
 

@@ -5,17 +5,23 @@ namespace Streamon.Subscription;
 
 public static class ServiceCollectionExtensions
 {
-    public static StreamSubscriptionBuilder AddStreamSubscription(this IServiceCollection services, SubscriptionId subscriptionId, StreamSubscriptionType streamSubscriptionType = default, SubscriptionErrorHandling subscriptionErrorHandling = default, EventDispatchType eventDispatchType = default)
+    public static StreamSubscriptionBuilder AddStreamSubscription(
+        this IServiceCollection services,
+        SubscriptionId subscriptionId,
+        StreamSubscriptionType streamSubscriptionType = default,
+        SubscriptionErrorHandling errorHandling = default,
+        EventDispatchType eventDispatchType = default)
     {
-        StreamSubscriptionBuilder streamSubscriptionBuilder = new(subscriptionId, streamSubscriptionType, subscriptionErrorHandling, eventDispatchType);
-        services.TryAddSingleton<SubscriptionManager>();
-        services.AddKeyedSingleton(subscriptionId.Value, (sp, _) =>
-        {
-            // Bridge IServiceProvider → service resolver at resolution time
-            streamSubscriptionBuilder.WithServiceResolver(type =>
-                sp.GetService(type) ?? ActivatorUtilities.CreateInstance(sp, type));
-            return streamSubscriptionBuilder.Build();
-        });
-        return streamSubscriptionBuilder;
+        StreamSubscriptionBuilder builder = new(subscriptionId, streamSubscriptionType, errorHandling, eventDispatchType);
+
+        services.TryAddSingleton<IStreamSubscriptionProvisioner, StreamSubscriptionProvisioner>();
+
+        // Builder template — consumed by the provisioner per (SubscriptionId, name).
+        // Registered both keyed (for targeted lookup) and non-keyed (so the provisioner
+        // can enumerate every registered subscription for eager All() materialization).
+        services.AddKeyedSingleton(subscriptionId.Value, (_, _) => builder);
+        services.AddSingleton(builder);
+
+        return builder;
     }
 }

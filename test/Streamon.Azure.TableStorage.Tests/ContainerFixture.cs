@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Streamon.Azure.TableStorage.Subscription;
 using Streamon.Subscription;
 using Streamon.Tests.Fixtures;
@@ -36,7 +36,7 @@ public class ContainerFixture : IAsyncLifetime
         ServiceProvider = services.BuildServiceProvider();
 
         TableStreamStoreProvisioner = ServiceProvider.GetRequiredService<IStreamStoreProvisioner>();
-        SubscriptionManager = ServiceProvider.GetRequiredService<SubscriptionManager>();
+        SubscriptionProvisioner = ServiceProvider.GetRequiredService<IStreamSubscriptionProvisioner>();
     }
 
     public IServiceProvider ServiceProvider { get; private set; } = null!;
@@ -45,7 +45,7 @@ public class ContainerFixture : IAsyncLifetime
 
     public IStreamStoreProvisioner TableStreamStoreProvisioner { get; private set; } = null!;
 
-    public SubscriptionManager SubscriptionManager { get; private set; } = null!;
+    public IStreamSubscriptionProvisioner SubscriptionProvisioner { get; private set; } = null!;
 }
 
 public record OrderProjection(string Id, OrderProduct OrderProduct, DateTimeOffset CreatedOn, DateTimeOffset? CancelledOn = default, string? CancelledBy = default, string? CancellationReason = default);

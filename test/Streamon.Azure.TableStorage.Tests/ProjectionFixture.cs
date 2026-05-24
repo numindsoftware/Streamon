@@ -55,7 +55,7 @@ public class ProjectionFixture : IAsyncLifetime
         ServiceProvider = services.BuildServiceProvider();
 
         StreamStoreProvisioner = ServiceProvider.GetRequiredService<IStreamStoreProvisioner>();
-        SubscriptionManager = ServiceProvider.GetRequiredService<SubscriptionManager>();
+        SubscriptionProvisioner = ServiceProvider.GetRequiredService<IStreamSubscriptionProvisioner>();
 
         // Expose the same projection store used by the subscription pipeline so tests
         // read projections through the same serialization/deserialization path as clients.
@@ -68,6 +68,6 @@ public class ProjectionFixture : IAsyncLifetime
     public IServiceProvider ServiceProvider { get; private set; } = null!;
     public AzuriteContainer TestContainer { get; private set; }
     public IStreamStoreProvisioner StreamStoreProvisioner { get; private set; } = null!;
-    public SubscriptionManager SubscriptionManager { get; private set; } = null!;
+    public IStreamSubscriptionProvisioner SubscriptionProvisioner { get; private set; } = null!;
     public IProjectionStore<OrderProjectionEntity> ProjectionStore { get; private set; } = null!;
 }
