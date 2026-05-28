@@ -224,7 +224,7 @@ public class IntegrationSubscriptionTests(ContainerFixture containerFixture) : I
     }
 
     private TableCheckpointStore CreateCheckpointStore() =>
-        new(new TableClient(containerFixture.TestContainer.GetConnectionString(), TableCheckpointStore.DefaultCheckpointTableName), TableName);
+        new(new TableClient(containerFixture.TestContainer.GetConnectionString(), new TableCheckpointStoreOptions().CheckpointTableName));
 
     private TableSubscriptionStreamReader CreateSubscriptionStreamReader()
     {

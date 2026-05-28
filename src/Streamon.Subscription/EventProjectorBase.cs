@@ -1,7 +1,6 @@
-﻿using Streamon.Subscription;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 
-namespace Streamon.Azure.TableStorage.Subscription;
+namespace Streamon.Subscription;
 
 public abstract class EventProjectorBase<TProjector, TState> where TProjector : EventProjectorBase<TProjector, TState>
 {
@@ -22,7 +21,7 @@ public abstract class EventProjectorBase<TProjector, TState> where TProjector : 
             var method = projectorType.GetMethod(nameof(IEventInitialProjector<object, object>.Project), [ eventContextType, typeof(CancellationToken) ]);
             if (method != null)
             {
-                _initializeHandlers.AddOrUpdate(eventType, (TProjector projector, Event @event, CancellationToken cancellationToken) =>
+                _initializeHandlers.AddOrUpdate(eventType, (projector, @event, cancellationToken) =>
                 {
                     var factoryMethod = eventContextType.GetMethod(nameof(EventHandlerContext<object>.From))!;
                     var eventConsumeContext = factoryMethod.Invoke(null, [@event])!;
@@ -41,7 +40,7 @@ public abstract class EventProjectorBase<TProjector, TState> where TProjector : 
             var method = projectorType.GetMethod(nameof(IEventProjector<object, object>.ProjectAsync), [typeof(TState), eventContextType, typeof(CancellationToken)]);
             if (method != null)
             {
-                _updateHandlers.AddOrUpdate(eventType, (TProjector projector, TState state, Event @event, CancellationToken cancellationToken) =>
+                _updateHandlers.AddOrUpdate(eventType, (projector, state, @event, cancellationToken) =>
                 {
                     var factoryMethod = eventContextType.GetMethod(nameof(EventHandlerContext<object>.From))!;
                     var eventConsumeContext = factoryMethod.Invoke(null, [@event])!;

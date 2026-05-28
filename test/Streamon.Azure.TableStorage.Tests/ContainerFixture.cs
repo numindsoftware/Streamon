@@ -11,11 +11,12 @@ public class ContainerFixture : IAsyncLifetime
     public ContainerFixture() => 
         TestContainer = new AzuriteBuilder("mcr.microsoft.com/azure-storage/azurite:latest")
         .WithName("streamon-azurite")
-        .WithPortBinding(10002, true)
         .Build();
 
+#pragma warning disable CA1816 // Dispose methods should call SuppressFinalize
     public async ValueTask DisposeAsync() => 
         await TestContainer.DisposeAsync();
+#pragma warning restore CA1816 // Dispose methods should call SuppressFinalize
 
     public async ValueTask InitializeAsync()
     {
@@ -24,14 +25,15 @@ public class ContainerFixture : IAsyncLifetime
         await TestContainer.StartAsync();
 
         services.AddStreamon()
-            .AddTableStorageStreamStore(TestContainer.GetConnectionString(), options =>
+            .UseTableStorageStreamStore(TestContainer.GetConnectionString(), options =>
             {
+                options.StreamTableName = string.Empty;
                 options.StreamTypeProvider = new StreamTypeProvider().RegisterTypes<OrderCaptured>();
             });
 
-        services.AddStreamSubscription(SubscriptionId.From("test-subscription"))
-            .UseTableStorageCheckpointStore(TestContainer.GetConnectionString(), nameof(IntegrationStreamTests))
-            .UseTableStorageSubscriptionStreamReader(TestContainer.GetConnectionString(), nameof(IntegrationStreamTests));
+        services.AddStreamonSubscription(SubscriptionId.From("test-subscription"))
+            .UseTableStorageCheckpointStore(TestContainer.GetConnectionString(), o => o.CheckpointTableName = nameof(IntegrationStreamTests))
+            .UseTableStorageSubscriptionStreamReader(TestContainer.GetConnectionString(), o => o.StreamTableName = nameof(IntegrationStreamTests));
 
         ServiceProvider = services.BuildServiceProvider();
 

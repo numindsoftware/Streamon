@@ -26,7 +26,7 @@ public class StreamSubscriptionTests
         SubscriptionErrorHandling errorHandling = SubscriptionErrorHandling.Throw,
         IReadOnlyList<IEventMiddleware>? middlewares = null)
     {
-        var builder = new StreamSubscriptionBuilder(SubId, type, errorHandling)
+        var builder = new StreamSubscriptionBuilder(SubId, new StreamSubscriptionOptions { StreamSubscriptionType = type, ErrorHandling = errorHandling })
             .UseCheckpointStore(_checkpointStore)
             .UseSubscriptionStreamReader(_reader);
 
@@ -341,7 +341,7 @@ public class StreamSubscriptionTests
     {
         var emptyReader = new SubscriptionStreamReader();
         var handler = new TrackingHandler();
-        var subscription = new StreamSubscriptionBuilder(SubId, StreamSubscriptionType.CatchUp)
+        var subscription = new StreamSubscriptionBuilder(SubId, new StreamSubscriptionOptions { StreamSubscriptionType = StreamSubscriptionType.CatchUp })
             .UseCheckpointStore(_checkpointStore)
             .UseSubscriptionStreamReader(emptyReader)
             .AddEventHandler(handler)
@@ -392,6 +392,41 @@ public class StreamSubscriptionTests
         {
             throw new InvalidOperationException("Simulated middleware failure");
         }
+    }
+
+    // ── Per-handler pipeline composition ────────────────────────────────
+
+    [Fact]
+    public async Task MiddlewareInvokedOncePerHandlerPerEvent()
+    {
+        var handler1 = new TrackingHandler();
+        var handler2 = new TrackingHandler();
+        var middleware = new TrackingMiddleware();
+        var subscription = CreateSubscription([handler1, handler2], middlewares: [middleware]);
+
+        await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(_reader.Events.Count * 2, middleware.BeforeEvents.Count);
+        Assert.Equal(_reader.Events.Count * 2, middleware.AfterEvents.Count);
+        Assert.Equal(_reader.Events.Count, handler1.HandledEvents.Count);
+        Assert.Equal(_reader.Events.Count, handler2.HandledEvents.Count);
+    }
+
+    [Fact]
+    public async Task ShortCircuitMiddlewareAppliesPerHandler()
+    {
+        // The short-circuit middleware sits before each handler, so neither handler runs;
+        // intercept count equals events * handlers.
+        var handler1 = new TrackingHandler();
+        var handler2 = new TrackingHandler();
+        var middleware = new ShortCircuitMiddleware();
+        var subscription = CreateSubscription([handler1, handler2], middlewares: [middleware]);
+
+        await subscription.PollAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(_reader.Events.Count * 2, middleware.InterceptedEvents.Count);
+        Assert.Empty(handler1.HandledEvents);
+        Assert.Empty(handler2.HandledEvents);
     }
 }
 

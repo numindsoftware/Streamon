@@ -5,21 +5,21 @@ namespace Streamon.Subscription;
 
 public static class ServiceCollectionExtensions
 {
-    public static StreamSubscriptionBuilder AddStreamSubscription(
+    public static StreamSubscriptionBuilder AddStreamonSubscription(
         this IServiceCollection services,
         SubscriptionId subscriptionId,
-        StreamSubscriptionType streamSubscriptionType = default,
-        SubscriptionErrorHandling errorHandling = default,
-        EventDispatchType eventDispatchType = default)
+        Action<StreamSubscriptionOptions>? configureOptions = default)
     {
-        StreamSubscriptionBuilder builder = new(subscriptionId, streamSubscriptionType, errorHandling, eventDispatchType);
+        StreamSubscriptionOptions options = new();
+        configureOptions?.Invoke(options);
 
+        StreamSubscriptionBuilder builder = new(subscriptionId, options);
         services.TryAddSingleton<IStreamSubscriptionProvisioner, StreamSubscriptionProvisioner>();
 
         // Builder template — consumed by the provisioner per (SubscriptionId, name).
         // Registered both keyed (for targeted lookup) and non-keyed (so the provisioner
         // can enumerate every registered subscription for eager All() materialization).
-        services.AddKeyedSingleton(subscriptionId.Value, (_, _) => builder);
+        services.AddKeyedSingleton(subscriptionId.Value, builder);
         services.AddSingleton(builder);
 
         return builder;

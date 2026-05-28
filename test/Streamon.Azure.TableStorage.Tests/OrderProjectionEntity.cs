@@ -6,8 +6,8 @@ namespace Streamon.Azure.TableStorage.Tests;
 
 public class OrderProjectionEntity : ITableEntity
 {
-    public string PartitionKey { get; set; } = default!;
-    public string RowKey { get; set; } = default!;
+    public string PartitionKey { get; set; } = string.Empty;
+    public string RowKey { get => OrderId; set => OrderId = value; }
     public DateTimeOffset? Timestamp { get; set; }
     public ETag ETag { get; set; }
 

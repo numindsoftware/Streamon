@@ -1,0 +1,26 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".github/copilot-instructions.md" />
+    <File Path=".github/workflows/cd.yml" />
+    <File Path=".github/workflows/ci.yml" />
+    <File Path=".gitignore" />
+    <File Path="AGENTS.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Streamon.Azure.TableStorage/Streamon.Azure.TableStorage.csproj" />
+    <Project Path="src/Streamon.Subscription/Streamon.Subscription.csproj" />
+    <Project Path="src/Streamon/Streamon.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/Streamon.Azure.TableStorage.Tests/Streamon.Azure.TableStorage.Tests.csproj" />
+    <Project Path="test/Streamon.Subscription.Tests/Streamon.Subscription.Tests.csproj" />
+    <Project Path="test/Streamon.Tests.Fixtures/Streamon.Tests.Fixtures.csproj" />
+    <Project Path="test/Streamon.Tests/Streamon.Tests.csproj" />
+  </Folder>
+</Solution>

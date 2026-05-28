@@ -2,7 +2,26 @@
 
 public class TableStreamStoreOptions
 {
+    /// <summary>
+    /// The default name used when provisioning the stream store. Acts as the prefix for any
+    /// suffix-based naming strategy.
+    /// </summary>
+    public string StreamTableName { get; set; } = nameof(Streamon);
+
+    /// <summary>
+    /// Strategy used to compose the physical stream store name from
+    /// <see cref="StreamTableName"/> (first argument) and a provisioning-time suffix
+    /// (second argument). Defaults to <c>prefix + suffix</c>, returning the prefix unchanged
+    /// when the suffix is null or empty.
+    /// </summary>
+    public Func<string, string, string> StreamTableNamingStrategy { get; set; } = NamingConventions.Concatenate;
+
+    /// <summary>Composes the physical stream store name for the given suffix using the configured strategy.</summary>
+    public string ComposeStreamTableName(string? suffix) =>
+        StreamTableNamingStrategy(StreamTableName, suffix ?? string.Empty);
+
     public IStreamTypeProvider StreamTypeProvider { get; set; } = new StreamTypeProvider();
+
     /// <summary>
     /// Disabling soft delete will have both performance penalties and will make it impossible to recover deleted streams.
     /// Defaults to Soft delete mode, an IsDeleted flag will be set to true and a DeletedOn timestamp will be recorded.

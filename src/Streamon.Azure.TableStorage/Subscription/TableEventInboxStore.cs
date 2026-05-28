@@ -9,13 +9,9 @@ namespace Streamon.Azure.TableStorage.Subscription;
 /// handler) owns its own partition; rows are keyed by <see cref="EventId.Value"/> so the
 /// existence check is a single point read.
 /// </summary>
-public class TableStorageEventInbox(TableClient tableClient, string inboxName = TableStorageEventInbox.DefaultInboxTableName) : IEventInbox
+public class TableEventInboxStore(TableClient tableClient) : IEventInbox
 {
-    public const string DefaultInboxTableName = "StreamonInbox";
-
     /// <summary>Logical inbox scope incorporated into the partition key so multiple inboxes can share one table.</summary>
-    public string InboxName { get; } = inboxName;
-
     /// <inheritdoc/>
     public async Task<bool> HasProcessedAsync(
         SubscriptionId subscriptionId,

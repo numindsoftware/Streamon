@@ -12,10 +12,8 @@ namespace Streamon.Azure.TableStorage.Subscription;
 /// automatically serialized to JSON strings using the configured <see cref="JsonSerializerOptions"/>.
 /// </summary>
 /// <typeparam name="TState">The table entity type representing the projection state.</typeparam>
-public class TableStorageProjectionStore<TState>(
+public class TableProjectionStore<TState>(
     TableClient tableClient,
-    Func<TState, string> partitionKeySelector,
-    Func<TState, string> rowKeySelector,
     JsonSerializerOptions? jsonSerializerOptions = null) : IProjectionStore<TState>
     where TState : class, ITableEntity, new()
 {
@@ -43,9 +41,7 @@ public class TableStorageProjectionStore<TState>(
     /// <inheritdoc/>
     public async Task<TState?> ReadAsync(TState keyState, CancellationToken cancellationToken = default)
     {
-        var pk = partitionKeySelector(keyState);
-        var rk = rowKeySelector(keyState);
-        var response = await tableClient.GetEntityIfExistsAsync<TableEntity>(pk, rk, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var response = await tableClient.GetEntityIfExistsAsync<TableEntity>(keyState.PartitionKey, keyState.RowKey, cancellationToken: cancellationToken).ConfigureAwait(false);
         return response.HasValue ? DeserializeEntity(response.Value!) : default;
     }
 
@@ -59,7 +55,7 @@ public class TableStorageProjectionStore<TState>(
 
     private TableEntity SerializeEntity(TState state)
     {
-        var entity = new TableEntity(partitionKeySelector(state), rowKeySelector(state));
+        var entity = new TableEntity(state.PartitionKey, state.RowKey);
         foreach (var prop in _stateProperties)
         {
             var value = prop.GetValue(state);

@@ -1,51 +1,30 @@
-﻿using System.Reflection;
-using System.Text.Json;
+﻿namespace Streamon.Subscription;
 
-namespace Streamon.Subscription;
-
-public class StreamSubscriptionBuilder(SubscriptionId subscriptionId, StreamSubscriptionType streamSubscriptionType = default, SubscriptionErrorHandling errorHandling = default, EventDispatchType eventDispatchType = default)
+public class StreamSubscriptionBuilder
 {
     private Func<string, ISubscriptionStreamReader>? _subscriptionStreamReaderFactory;
     private Func<string, ICheckpointStore>? _checkpointStoreFactory;
     private Func<string, IEventInbox>? _eventInboxFactory;
 
-    private Func<IStreamTypeProvider>? _streamTypeProviderFactory;
     private Func<Type, object>? _serviceResolver;
-    private Func<string, string, string> _nameConvention = (prefix, suffix) => prefix + suffix;
-    private readonly List<Func<IEventHandler>> _handlerFactories = [];
+    private readonly List<Func<string, IEventHandler>> _handlerFactories = [];
     private readonly List<Type> _typedEventHandlerTypes = [];
+    private bool _useInboxDeduplication;
+    private string? _inboxConsumerName;
     private EventPipelineBuilder EventPipelineBuilder { get; } = new();
 
-    public StreamSubscriptionBuilder UseStreamTypeProvider(IStreamTypeProvider typeProvider) =>
-        UseStreamTypeProvider(() => typeProvider);
-
-    public StreamSubscriptionBuilder UseStreamTypeProvider(Func<IStreamTypeProvider> factory)
-    {
-        _streamTypeProviderFactory = factory;
-        return this;
-    }
+    public StreamSubscriptionBuilder(SubscriptionId subscriptionId, StreamSubscriptionOptions options) =>
+        (SubscriptionId, Options) = (subscriptionId, options ?? throw new ArgumentNullException(nameof(options)));
 
     /// <summary>
     /// Gets the subscription identity associated with this builder instance.
     /// </summary>
-    public SubscriptionId SubscriptionId => subscriptionId;
+    public SubscriptionId SubscriptionId { get; }
 
     /// <summary>
-    /// Overrides how component names are composed from the registration-time prefix
-    /// (e.g. <c>"StreamonCheckpoint"</c>) and the provisioning-time suffix
-    /// (e.g. <c>"Contoso"</c>). Default: <c>(p, s) =&gt; p + s</c>, yielding
-    /// <c>"StreamonCheckpointContoso"</c>.
+    /// Gets the configured <see cref="StreamSubscriptionOptions"/> (default names and per-component naming strategies).
     /// </summary>
-    /// <remarks>
-    /// Applied uniformly to the stream-reader, checkpoint-store, and event-inbox table names.
-    /// When the suffix is empty (no name passed to the provisioner), the convention should
-    /// return the prefix unchanged so existing registrations remain backward compatible.
-    /// </remarks>
-    public StreamSubscriptionBuilder UseNamingConvention(Func<string, string, string> convention)
-    {
-        _nameConvention = convention ?? throw new ArgumentNullException(nameof(convention));
-        return this;
-    }
+    public StreamSubscriptionOptions Options { get; }
 
     /// <summary>
     /// Configures the subscription to resolve <see cref="ISubscriptionStreamReader"/> via a factory delegate.
@@ -85,9 +64,32 @@ public class StreamSubscriptionBuilder(SubscriptionId subscriptionId, StreamSubs
         return this;
     }
 
-    public StreamSubscriptionBuilder UseEventInbox(IEventInbox inbox)
+    public StreamSubscriptionBuilder UseEventInbox(IEventInbox inbox) =>
+        UseEventInbox(_ => inbox);
+
+    /// <summary>
+    /// Enables per-handler deduplication via the configured <see cref="IEventInbox"/>.
+    /// When enabled, an <see cref="InboxDeduplicationMiddleware"/> is composed at the innermost
+    /// position of <i>each handler's</i> dispatch pipeline so that an event already recorded for
+    /// (<see cref="SubscriptionId"/>, consumer-name) short-circuits that handler's invocation and
+    /// a successful invocation results in a single <see cref="IEventInbox.MarkProcessedAsync"/> call
+    /// per handler.
+    /// </summary>
+    /// <param name="consumerName">
+    /// Optional consumer name used by the inbox. When <see langword="null"/> (the default), each
+    /// handler uses its own type name as the consumer name, matching the inbox contract
+    /// ("a consumer is uniquely identified by a (SubscriptionId, consumer-name) pair — typically
+    /// the handler's type name"). Specify an explicit value to share a single dedup record across
+    /// every handler in the subscription.
+    /// </param>
+    /// <remarks>
+    /// Requires <see cref="UseEventInbox(System.Func{string, IEventInbox})"/> (or its instance overload)
+    /// to be configured; otherwise <see cref="Build"/> throws <see cref="InvalidOperationException"/>.
+    /// </remarks>
+    public StreamSubscriptionBuilder UseInboxDeduplication(string? consumerName = null)
     {
-        _eventInboxFactory = _ => inbox;
+        _useInboxDeduplication = true;
+        _inboxConsumerName = consumerName;
         return this;
     }
 
@@ -102,8 +104,6 @@ public class StreamSubscriptionBuilder(SubscriptionId subscriptionId, StreamSubs
         return this;
     }
 
-    // ── Handler registration ────────────────────────────────────────────
-
     /// <summary>
     /// Registers a pre-constructed <see cref="IEventHandler"/> instance.
     /// </summary>
@@ -115,7 +115,7 @@ public class StreamSubscriptionBuilder(SubscriptionId subscriptionId, StreamSubs
     /// </summary>
     public StreamSubscriptionBuilder AddEventHandler(Func<IEventHandler> factory)
     {
-        _handlerFactories.Add(factory);
+        _handlerFactories.Add(_ => factory());
         return this;
     }
 
@@ -125,7 +125,7 @@ public class StreamSubscriptionBuilder(SubscriptionId subscriptionId, StreamSubs
     /// </summary>
     public StreamSubscriptionBuilder AddEventHandler<T>() where T : class, IEventHandler
     {
-        _handlerFactories.Add(() => (IEventHandler)ResolveService(typeof(T)));
+        _handlerFactories.Add(_ => (IEventHandler)ResolveService(typeof(T)));
         return this;
     }
 
@@ -164,13 +164,27 @@ public class StreamSubscriptionBuilder(SubscriptionId subscriptionId, StreamSubs
     /// <see cref="IEventProjector{TEvent, TState}"/>.</typeparam>
     /// <typeparam name="TState">The projection state type.</typeparam>
     public StreamSubscriptionBuilder AddProjection<TProjector, TState>(Func<IProjectionStore<TState>> storeFactory)
+        where TProjector : class =>
+        AddProjection<TProjector, TState>(_ => storeFactory());
+
+    /// <summary>
+    /// Registers a projection whose <see cref="IProjectionStore{TState}"/> is created from a suffix-aware
+    /// factory. The suffix passed to <see cref="Build"/> is forwarded so the store can compose a
+    /// per-tenant (or per-scope) backing resource name. Use this overload when each projection should
+    /// pick its own naming strategy independent of the subscription-wide stream/checkpoint/inbox strategies.
+    /// </summary>
+    /// <typeparam name="TProjector">The projector type implementing
+    /// <see cref="IEventInitialProjector{TEvent, TState}"/> and/or
+    /// <see cref="IEventProjector{TEvent, TState}"/>.</typeparam>
+    /// <typeparam name="TState">The projection state type.</typeparam>
+    public StreamSubscriptionBuilder AddProjection<TProjector, TState>(Func<string, IProjectionStore<TState>> storeFactory)
         where TProjector : class
     {
-        _handlerFactories.Add(() =>
+        _handlerFactories.Add(suffix =>
         {
             var projector = ResolveService(typeof(TProjector));
-            var store = storeFactory();
-            var handler = new ProjectionEventHandler<TState>(subscriptionId, store);
+            var store = storeFactory(suffix);
+            var handler = new ProjectionEventHandler<TState>(SubscriptionId, store);
             handler.RegisterProjectorsFrom(projector);
             return handler;
         });
@@ -180,7 +194,7 @@ public class StreamSubscriptionBuilder(SubscriptionId subscriptionId, StreamSubs
     /// <summary>
     /// Registers a projection where both the projector and <see cref="IProjectionStore{TState}"/> are
     /// resolved from the service container at build time. Requires DI integration
-    /// (<see cref="ServiceCollectionExtensions.AddStreamSubscription"/>).
+    /// (<see cref="ServiceCollectionExtensions.AddStreamonSubscription"/>).
     /// </summary>
     /// <typeparam name="TProjector">The projector type implementing
     /// <see cref="IEventInitialProjector{TEvent, TState}"/> and/or
@@ -189,11 +203,11 @@ public class StreamSubscriptionBuilder(SubscriptionId subscriptionId, StreamSubs
     public StreamSubscriptionBuilder AddProjection<TProjector, TState>()
         where TProjector : class
     {
-        _handlerFactories.Add(() =>
+        _handlerFactories.Add(_ =>
         {
             var projector = ResolveService(typeof(TProjector));
             var store = (IProjectionStore<TState>)ResolveService(typeof(IProjectionStore<TState>));
-            var handler = new ProjectionEventHandler<TState>(subscriptionId, store);
+            var handler = new ProjectionEventHandler<TState>(SubscriptionId, store);
             handler.RegisterProjectorsFrom(projector);
             return handler;
         });
@@ -216,6 +230,12 @@ public class StreamSubscriptionBuilder(SubscriptionId subscriptionId, StreamSubs
     /// and/or service resolver. Throws <see cref="InvalidOperationException"/> if required
     /// infrastructure components have not been configured.
     /// </summary>
+    /// <remarks>
+    /// The configured event pipeline (user middlewares + optional inbox deduplication) is composed
+    /// <i>per handler</i>, so middlewares observe each (event, handler) combination individually and
+    /// each handler dedups under its own consumer name. The <see cref="StreamSubscriptionOptions.EventDispatchType"/>
+    /// setting controls whether per-handler pipelines run sequentially or concurrently for a given event.
+    /// </remarks>
     public StreamSubscription Build(string suffix = "")
     {
         var checkpointStore = _checkpointStoreFactory?.Invoke(suffix)
@@ -223,34 +243,57 @@ public class StreamSubscriptionBuilder(SubscriptionId subscriptionId, StreamSubs
         var subscriptionStreamReader = _subscriptionStreamReaderFactory?.Invoke(suffix)
             ?? throw new InvalidOperationException("No subscription stream reader configured. Call UseSubscriptionStreamReader before building.");
 
-        List<IEventHandler> handlers = ResolveHandlers();
+        var handlers = ResolveHandlers(suffix);
 
-        var pipeline = EventPipelineBuilder.Build(async (@event, cancellationToken) =>
+        IEventInbox? inbox = null;
+        if (_useInboxDeduplication)
         {
-            if (eventDispatchType == EventDispatchType.Concurrent)
+            inbox = _eventInboxFactory?.Invoke(suffix)
+                ?? throw new InvalidOperationException("Inbox deduplication is enabled but no IEventInbox is configured. Call UseEventInbox before UseInboxDeduplication.");
+        }
+
+        // Compose the configured event pipeline (user middlewares + optional inbox dedup) per handler,
+        // so each (event, handler) combination flows through its own middleware chain and each handler
+        // dedups under its own consumer name.
+        var perHandlerPipelines = handlers.Select(handler =>
+        {
+            EventHandlerDelegate terminal = (@event, cancellationToken) => handler.HandleAsync(@event, cancellationToken);
+            if (inbox is not null)
             {
-                var tasks = handlers.Select(handler => handler.HandleAsync(@event, cancellationToken));
+                var consumerName = _inboxConsumerName ?? handler.GetType().FullName ?? handler.GetType().Name;
+                var dedup = new InboxDeduplicationMiddleware(inbox, SubscriptionId, consumerName);
+                var inner = terminal;
+                terminal = (@event, cancellationToken) => dedup.InvokeAsync(@event, inner, cancellationToken);
+            }
+            return EventPipelineBuilder.Build(terminal);
+        }).ToArray();
+
+        async Task dispatch(Event @event, CancellationToken cancellationToken)
+        {
+            if (Options.EventDispatchType == EventDispatchType.Concurrent)
+            {
+                var tasks = perHandlerPipelines.Select(p => p(@event, cancellationToken));
                 await Task.WhenAll(tasks).ConfigureAwait(false);
             }
             else
             {
-                foreach (var handler in handlers)
+                foreach (var p in perHandlerPipelines)
                 {
-                    await handler.HandleAsync(@event, cancellationToken).ConfigureAwait(false);
+                    await p(@event, cancellationToken).ConfigureAwait(false);
                 }
             }
-        });
+        }
 
-        return new StreamSubscription(subscriptionId, streamSubscriptionType, errorHandling, checkpointStore, subscriptionStreamReader, pipeline);
+        return new StreamSubscription(SubscriptionId, Options.StreamSubscriptionType, Options.ErrorHandling, checkpointStore, subscriptionStreamReader, dispatch);
     }
 
-    private List<IEventHandler> ResolveHandlers()
+    private List<IEventHandler> ResolveHandlers(string suffix)
     {
-        List<IEventHandler> handlers = [.. _handlerFactories.Select(f => f())];
+        List<IEventHandler> handlers = [.. _handlerFactories.Select(f => f(suffix))];
 
         if (_typedEventHandlerTypes.Count > 0)
         {
-            var typedHandler = new TypedEventHandler(subscriptionId);
+            var typedHandler = new TypedEventHandler(SubscriptionId);
             foreach (var handlerType in _typedEventHandlerTypes)
             {
                 var instance = ResolveService(handlerType);
@@ -261,9 +304,6 @@ public class StreamSubscriptionBuilder(SubscriptionId subscriptionId, StreamSubs
 
         return handlers;
     }
-
-    /// <summary>Composes a component name from its registration-time prefix and a provisioner-supplied suffix.</summary>
-    public string ComposeName(string prefix, string suffix) => _nameConvention(prefix, suffix);
 
     private object ResolveService(Type type) =>
         _serviceResolver?.Invoke(type)

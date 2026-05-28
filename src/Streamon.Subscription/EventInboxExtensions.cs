@@ -10,6 +10,12 @@ public static class EventInboxExtensions
     /// Side-effect-first ordering: the handler runs before the inbox is updated, so a crash
     /// in between causes a redelivery (preferred over silent drop). The handler should be
     /// idempotent whenever possible.
+    /// <para>
+    /// For subscription-wide deduplication, prefer
+    /// <see cref="StreamSubscriptionBuilder.UseInboxDeduplication(string?)"/> which installs
+    /// <see cref="InboxDeduplicationMiddleware"/> at the innermost pipeline position. Use this
+    /// extension only when you need per-handler idempotency inside a custom <see cref="IEventHandler"/>.
+    /// </para>
     /// </remarks>
     public static async ValueTask RunOnceAsync(
         this IEventInbox inbox,

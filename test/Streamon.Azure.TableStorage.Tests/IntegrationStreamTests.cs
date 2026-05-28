@@ -1,5 +1,4 @@
-﻿using Streamon.Subscription;
-using Streamon.Tests.Fixtures;
+﻿using Streamon.Tests.Fixtures;
 
 namespace Streamon.Azure.TableStorage.Tests;
 
@@ -9,7 +8,6 @@ public class IntegrationStreamTests(ContainerFixture containerFixture) : IClassF
     [Fact, Priority(1)]
     public async Task CreateStoreThroughServiceCollection()
     {
-
         var store = await containerFixture.TableStreamStoreProvisioner.CreateStoreAsync("TestCreated", cancellationToken: TestContext.Current.CancellationToken);
         var stream = await store.AppendEventsAsync(new StreamId("order-123"), StreamPosition.Start, [OrderEvents.OrderCaptured], cancellationToken: TestContext.Current.CancellationToken);
         Assert.NotEmpty(stream);

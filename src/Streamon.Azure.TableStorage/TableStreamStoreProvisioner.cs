@@ -2,18 +2,18 @@
 
 namespace Streamon.Azure.TableStorage;
 
-public class TableStreamStoreProvisioner(TableServiceClient tableServiceClient, TableStreamStoreOptions options) : IStreamStoreProvisioner
+public class TableStreamStoreProvisioner(
+    TableServiceClient tableServiceClient,
+    TableStreamStoreOptions options) : IStreamStoreProvisioner
 {
-    public async Task<IStreamStore> CreateStoreAsync(string name = nameof(Streamon), CancellationToken cancellationToken = default)
+    public async Task<IStreamStore> CreateStoreAsync(string name = "", CancellationToken cancellationToken = default)
     {
-        await tableServiceClient.CreateTableIfNotExistsAsync(name, cancellationToken);
-        var tableClient = tableServiceClient.GetTableClient(name);
+        var resolvedName = options.ComposeStreamTableName(name);
+        await tableServiceClient.CreateTableIfNotExistsAsync(resolvedName, cancellationToken);
+        var tableClient = tableServiceClient.GetTableClient(resolvedName);
         await SeedGlobalPositionEntityAsync(tableClient, cancellationToken).ConfigureAwait(false);
         return new TableStreamStore(tableClient, options);
     }
-
-    public Task DeleteStore(string name, CancellationToken cancellationToken = default) =>
-        tableServiceClient.DeleteTableAsync(name, cancellationToken);
 
     /// <summary>
     /// Seeds the <c>__GLOBAL__/SO-META</c> entity with <c>GlobalSequence = 0</c> if it does not already exist.
