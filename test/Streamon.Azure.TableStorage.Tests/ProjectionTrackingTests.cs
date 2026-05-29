@@ -66,7 +66,6 @@ public class ProjectionTrackingFixture : IAsyncLifetime
     public IServiceProvider ServiceProvider { get; private set; } = null!;
     public IStreamStoreProvisioner StreamStoreProvisioner { get; private set; } = null!;
     public IStreamSubscriptionProvisioner SubscriptionProvisioner { get; private set; } = null!;
-    //public IProjectionStore<TrackedOrderProjection> ProjectionStore { get; private set; } = null!;
 
     public IProjectionStore<TState> CreateProjectionStore<TState>(string name)
     where TState : class, ITableEntity, new()

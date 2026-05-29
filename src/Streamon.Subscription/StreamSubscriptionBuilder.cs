@@ -10,7 +10,6 @@ public class StreamSubscriptionBuilder
     private readonly List<Func<string, IEventHandler>> _handlerFactories = [];
     private readonly List<Type> _typedEventHandlerTypes = [];
     private bool _useInboxDeduplication;
-    private string? _inboxConsumerName;
     private EventPipelineBuilder EventPipelineBuilder { get; } = new();
 
     public StreamSubscriptionBuilder(SubscriptionId subscriptionId, StreamSubscriptionOptions options) =>
@@ -83,13 +82,12 @@ public class StreamSubscriptionBuilder
     /// every handler in the subscription.
     /// </param>
     /// <remarks>
-    /// Requires <see cref="UseEventInbox(System.Func{string, IEventInbox})"/> (or its instance overload)
+    /// Requires <see cref="UseEventInbox(Func{string, IEventInbox})"/> (or its instance overload)
     /// to be configured; otherwise <see cref="Build"/> throws <see cref="InvalidOperationException"/>.
     /// </remarks>
-    public StreamSubscriptionBuilder UseInboxDeduplication(string? consumerName = null)
+    public StreamSubscriptionBuilder UseInboxDeduplication()
     {
         _useInboxDeduplication = true;
-        _inboxConsumerName = consumerName;
         return this;
     }
 
@@ -260,7 +258,7 @@ public class StreamSubscriptionBuilder
             EventHandlerDelegate terminal = (@event, cancellationToken) => handler.HandleAsync(@event, cancellationToken);
             if (inbox is not null)
             {
-                var consumerName = _inboxConsumerName ?? handler.GetType().FullName ?? handler.GetType().Name;
+                var consumerName = handler.GetType().FullName ?? handler.GetType().Name;
                 var dedup = new InboxDeduplicationMiddleware(inbox, SubscriptionId, consumerName);
                 var inner = terminal;
                 terminal = (@event, cancellationToken) => dedup.InvokeAsync(@event, inner, cancellationToken);

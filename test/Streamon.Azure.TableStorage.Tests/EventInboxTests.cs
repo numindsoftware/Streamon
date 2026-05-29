@@ -56,6 +56,7 @@ public class EventInboxFixture : IAsyncLifetime
                     options.StreamTypeProvider = typeProvider;
                 })
             .UseTableStorageEventInbox(connectionString)
+            .UseInboxDeduplication()
             .AddEventHandler<CountingInboxHandler>();
 
         ServiceProvider = services.BuildServiceProvider();
@@ -161,19 +162,15 @@ public class EventInboxTests(EventInboxFixture fixture) : IClassFixture<EventInb
 /// Sample handler that delegates idempotency to <see cref="IEventInbox"/>; the protected side
 /// effect (an in-memory counter increment) is what most real handlers replace with an external call.
 /// </summary>
-public class CountingInboxHandler(IEventInbox inbox) : IEventHandler
+public class CountingInboxHandler() : IEventHandler
 {
     private int _count;
     public int SideEffectCount => _count;
     public void Reset() => Interlocked.Exchange(ref _count, 0);
 
-    public async Task HandleAsync(Event @event, CancellationToken cancellationToken = default)
+    public Task HandleAsync(Event @event, CancellationToken cancellationToken = default)
     {
-        await inbox.RunOnceAsync(
-            EventInboxFixture.SubscriptionId,
-            nameof(CountingInboxHandler),
-            @event,
-            _ => { Interlocked.Increment(ref _count); return ValueTask.CompletedTask; },
-            cancellationToken);
+        Interlocked.Increment(ref _count); 
+        return Task.CompletedTask;
     }
 }
