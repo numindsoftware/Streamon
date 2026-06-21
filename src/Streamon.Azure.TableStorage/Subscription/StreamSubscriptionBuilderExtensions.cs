@@ -17,7 +17,7 @@ public static class StreamSubscriptionBuilderExtensions
     {
         var options = new TableStreamStoreOptions();
         configureOptions?.Invoke(options);
-        builder.UseSubscriptionStreamReader(suffix => new TableSubscriptionStreamReader(new TableClient(connectionString, options.ComposeStreamTableName(suffix)), options));
+        builder.UseSubscriptionStreamReader(suffix => new TableSubscriptionStreamReader(new TableServiceClient(connectionString), options.ComposeStreamTableName(suffix), options));
         return builder;
     }
 

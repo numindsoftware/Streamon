@@ -233,7 +233,7 @@ public class IntegrationSubscriptionTests(ContainerFixture containerFixture) : I
         {
             StreamTypeProvider = new StreamTypeProvider().RegisterTypes<OrderCaptured>()
         };
-        return new(new TableClient(containerFixture.TestContainer.GetConnectionString(), TableName), options);
+        return new TableSubscriptionStreamReader(new TableServiceClient(containerFixture.TestContainer.GetConnectionString()), TableName, options);
     }
 
     private class NoOpHandler : IEventHandler
