@@ -9,8 +9,10 @@ namespace Streamon.Azure.TableStorage.Subscription;
 /// handler) owns its own partition; rows are keyed by <see cref="EventId.Value"/> so the
 /// existence check is a single point read.
 /// </summary>
-public class TableEventInboxStore(TableClient tableClient) : IEventInbox
+public class TableEventInboxStore(TableServiceClient tableServiceClient, string tableName) : IEventInbox
 {
+    private readonly TableClient _tableClient = tableServiceClient.GetTableClient(tableName);
+
     /// <summary>Logical inbox scope incorporated into the partition key so multiple inboxes can share one table.</summary>
     /// <inheritdoc/>
     public async Task<bool> HasProcessedAsync(
@@ -19,13 +21,14 @@ public class TableEventInboxStore(TableClient tableClient) : IEventInbox
         EventId eventId,
         CancellationToken cancellationToken = default)
     {
-        var response = await tableClient
+        if (!await tableServiceClient.CheckTableExistsAsync(tableName, cancellationToken).ConfigureAwait(false)) return false;
+
+        var response = await _tableClient
             .GetEntityIfExistsAsync<InboxEntryEntity>(
                 BuildPartitionKey(subscriptionId, consumerName),
                 eventId.Value,
                 cancellationToken: cancellationToken)
             .ConfigureAwait(false);
-
         return response.HasValue;
     }
 
@@ -36,7 +39,7 @@ public class TableEventInboxStore(TableClient tableClient) : IEventInbox
         Event @event,
         CancellationToken cancellationToken = default)
     {
-        await tableClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+        await _tableClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
 
         var entry = new InboxEntryEntity
         {
@@ -51,7 +54,7 @@ public class TableEventInboxStore(TableClient tableClient) : IEventInbox
         {
             // AddEntity surfaces duplicates explicitly — we swallow them so MarkProcessedAsync
             // remains idempotent per the IEventInbox contract.
-            await tableClient.AddEntityAsync(entry, cancellationToken).ConfigureAwait(false);
+            await _tableClient.AddEntityAsync(entry, cancellationToken).ConfigureAwait(false);
         }
         catch (RequestFailedException ex) when (ex.Status == 409)
         {

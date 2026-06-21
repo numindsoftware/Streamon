@@ -12,6 +12,6 @@ internal static class TableClientExtensions
         return response;
     }
 
-    public static async Task<bool> CheckTableExistsAsync(this TableServiceClient tableClient, string name, CancellationToken cancellationToken = default) =>
-        await tableClient.QueryAsync(name, 1, cancellationToken).GetAsyncEnumerator(cancellationToken).MoveNextAsync();
+    public static ValueTask<bool> CheckTableExistsAsync(this TableServiceClient tableClient, string name, CancellationToken cancellationToken = default) =>
+        tableClient.QueryAsync(t => string.Compare(t.Name, name) == 0, 1, cancellationToken).GetAsyncEnumerator(cancellationToken).MoveNextAsync();
 }

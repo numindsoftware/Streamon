@@ -109,7 +109,7 @@ public class EventInboxTests(EventInboxFixture fixture) : IClassFixture<EventInb
         var inboxTableName = new TableEventInboxStoreOptions().DefaultInboxName;
         var ct = TestContext.Current.CancellationToken;
         var inbox = new TableEventInboxStore(
-            new global::Azure.Data.Tables.TableClient(fixture.TestContainer.GetConnectionString(), inboxTableName));
+            new global::Azure.Data.Tables.TableServiceClient(fixture.TestContainer.GetConnectionString()), inboxTableName);
 
         var eventId = EventId.New();
         var @event = new Event(
@@ -134,7 +134,7 @@ public class EventInboxTests(EventInboxFixture fixture) : IClassFixture<EventInb
         var inboxTableName = new TableEventInboxStoreOptions().DefaultInboxName;
         var ct = TestContext.Current.CancellationToken;
         var inbox = new TableEventInboxStore(
-            new global::Azure.Data.Tables.TableClient(fixture.TestContainer.GetConnectionString(), inboxTableName));
+            new global::Azure.Data.Tables.TableServiceClient(fixture.TestContainer.GetConnectionString()), inboxTableName);
 
         var @event = new Event(
             new StreamId("idem-stream"),
@@ -153,7 +153,8 @@ public class EventInboxTests(EventInboxFixture fixture) : IClassFixture<EventInb
     {
         var checkpointTableName = new TableCheckpointStoreOptions().CheckpointTableName;
         var checkpointStore = new TableCheckpointStore(
-            new global::Azure.Data.Tables.TableClient(fixture.TestContainer.GetConnectionString(), checkpointTableName));
+            new global::Azure.Data.Tables.TableServiceClient(fixture.TestContainer.GetConnectionString()),
+            checkpointTableName);
         await checkpointStore.SetCheckpointAsync(EventInboxFixture.SubscriptionId, StreamPosition.Start, ct);
     }
 }

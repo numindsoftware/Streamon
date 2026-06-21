@@ -33,7 +33,7 @@ public static class StreamSubscriptionBuilderExtensions
     {
         var options = new TableCheckpointStoreOptions();
         configureOptions?.Invoke(options);
-        builder.UseCheckpointStore(suffix => new TableCheckpointStore(new TableClient(connectionString, options.ComposeCheckpointTableName(suffix))));
+        builder.UseCheckpointStore(suffix => new TableCheckpointStore(new TableServiceClient(connectionString), options.ComposeCheckpointTableName(suffix)));
         return builder;
     }
 
@@ -49,7 +49,7 @@ public static class StreamSubscriptionBuilderExtensions
     {
         var options = new TableEventInboxStoreOptions();
         configureOptions?.Invoke(options);
-        builder.UseEventInbox(suffix => new TableEventInboxStore(new TableClient(connectionString, options.ComposeInboxName(suffix))));
+        builder.UseEventInbox(suffix => new TableEventInboxStore(new TableServiceClient(connectionString), options.ComposeInboxName(suffix)));
         return builder;
     }
 

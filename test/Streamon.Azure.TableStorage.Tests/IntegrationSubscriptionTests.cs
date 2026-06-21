@@ -223,8 +223,9 @@ public class IntegrationSubscriptionTests(ContainerFixture containerFixture) : I
         Assert.Equal(StreamPosition.From(15), checkpoint2);
     }
 
-    private TableCheckpointStore CreateCheckpointStore() =>
-        new(new TableClient(containerFixture.TestContainer.GetConnectionString(), new TableCheckpointStoreOptions().CheckpointTableName));
+    private TableCheckpointStore CreateCheckpointStore() => new(
+        new TableServiceClient(containerFixture.TestContainer.GetConnectionString()),
+        new TableCheckpointStoreOptions().CheckpointTableName);
 
     private TableSubscriptionStreamReader CreateSubscriptionStreamReader()
     {
