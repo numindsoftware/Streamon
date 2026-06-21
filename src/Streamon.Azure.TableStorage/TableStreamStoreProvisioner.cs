@@ -3,12 +3,13 @@
 namespace Streamon.Azure.TableStorage;
 
 public class TableStreamStoreProvisioner(
+    string name,
     TableServiceClient tableServiceClient,
     TableStreamStoreOptions options) : IStreamStoreProvisioner
 {
-    public async Task<IStreamStore> CreateStoreAsync(string name = "", CancellationToken cancellationToken = default)
+    public async Task<IStreamStore> CreateStoreAsync(string suffix = "", CancellationToken cancellationToken = default)
     {
-        var resolvedName = options.ComposeStreamTableName(name);
+        var resolvedName = $"{name}{suffix}";
         await tableServiceClient.CreateTableIfNotExistsAsync(resolvedName, cancellationToken);
         var tableClient = tableServiceClient.GetTableClient(resolvedName);
         await SeedGlobalPositionEntityAsync(tableClient, cancellationToken).ConfigureAwait(false);

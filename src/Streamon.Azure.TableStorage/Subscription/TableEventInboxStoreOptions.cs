@@ -6,15 +6,9 @@ public class TableEventInboxStoreOptions
     public string DefaultInboxName { get; set; } = "StreamonInbox";
 
     /// <summary>
-    /// Strategy used to compose the physical inbox table name from
-    /// <see cref="DefaultInboxName"/> and a provisioning-time suffix. Default: prefix + suffix.
-    /// </summary>
-    public Func<string, string, string> DefaultInboxNamingStrategy { get; set; } = NamingConventions.Concatenate;
-
-    /// <summary>
     /// Composes the inbox table name for the given suffix. When <paramref name="prefix"/> is null the
     /// <see cref="DefaultInboxName"/> is used.
     /// </summary>
-    public string ComposeInboxName(string? suffix, string? prefix = null) =>
-        DefaultInboxNamingStrategy(prefix ?? DefaultInboxName, suffix ?? string.Empty);
+    public string ComposeInboxName(string? name, string? suffix = null) =>
+        $"{DefaultInboxName}{name ?? string.Empty}{suffix ?? string.Empty}";
 }

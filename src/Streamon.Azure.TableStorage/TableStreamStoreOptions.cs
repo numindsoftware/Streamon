@@ -7,18 +7,9 @@ public class TableStreamStoreOptions
     /// suffix-based naming strategy.
     /// </summary>
     public string StreamTableName { get; set; } = nameof(Streamon);
-
-    /// <summary>
-    /// Strategy used to compose the physical stream store name from
-    /// <see cref="StreamTableName"/> (first argument) and a provisioning-time suffix
-    /// (second argument). Defaults to <c>prefix + suffix</c>, returning the prefix unchanged
-    /// when the suffix is null or empty.
-    /// </summary>
-    public Func<string, string, string> StreamTableNamingStrategy { get; set; } = NamingConventions.Concatenate;
-
     /// <summary>Composes the physical stream store name for the given suffix using the configured strategy.</summary>
-    public string ComposeStreamTableName(string? suffix) =>
-        StreamTableNamingStrategy(StreamTableName, suffix ?? string.Empty);
+    
+    public string ComposeStreamTableName(string? name, string? suffix) => $"{StreamTableName}{name ?? string.Empty}{suffix ?? string.Empty}";
 
     public IStreamTypeProvider StreamTypeProvider { get; set; } = new StreamTypeProvider();
 

@@ -154,7 +154,6 @@ public class SubscriptionProvisionerTests(SubscriptionProvisionerFixture fixture
             .UseTableStorageStreamStore(connectionString, options =>
             {
                 options.StreamTableName = "CustomStream";
-                options.StreamTableNamingStrategy = (p, s) => string.IsNullOrEmpty(s) ? p : $"{p}X{s}";
                 options.StreamTypeProvider = typeProvider;
             });
 
@@ -166,13 +165,11 @@ public class SubscriptionProvisionerTests(SubscriptionProvisionerFixture fixture
             .UseTableStorageCheckpointStore(connectionString, o =>
             {
                 o.CheckpointTableName = "CustomChk";
-                o.CheckpointTableNamingStrategy = (p, s) => string.IsNullOrEmpty(s) ? p : $"{p}X{s}";
             })
             .UseTableStorageSubscriptionStreamReader(connectionString, o =>
             {
                 o.StreamTypeProvider = typeProvider;
                 o.StreamTableName = "CustomStream";
-                o.StreamTableNamingStrategy = (p, s) => string.IsNullOrEmpty(s) ? p : $"{p}X{s}";
             });
 
         var sp = services.BuildServiceProvider();
