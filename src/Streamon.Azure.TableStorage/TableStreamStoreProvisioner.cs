@@ -9,7 +9,7 @@ public class TableStreamStoreProvisioner(
 {
     public async Task<IStreamStore> CreateStoreAsync(string suffix = "", CancellationToken cancellationToken = default)
     {
-        var resolvedName = $"{name}{suffix}";
+        var resolvedName = options.ComposeStreamTableName(name, suffix);
         await tableServiceClient.CreateTableIfNotExistsAsync(resolvedName, cancellationToken);
         var tableClient = tableServiceClient.GetTableClient(resolvedName);
         await SeedGlobalPositionEntityAsync(tableClient, cancellationToken).ConfigureAwait(false);

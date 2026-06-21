@@ -39,6 +39,71 @@ Streamon is not an Event Sourcing library, but it can be used as an Event/Stream
 * Claim Checks for large events
 * Stream Sweeper (Archiving and Purging)
 
+## Registering Stream Stores
+
+Add the core services with `AddStreamon()` and choose a provider with `UseTableStorageStreamStore(...)`.
+Resolve an `IStreamStoreProvisioner` and call `CreateStoreAsync(suffix)` to obtain an `IStreamStore`. The
+optional `suffix` is appended to the base table name, which is the primary mechanism for partitioning data
+(per tenant, per environment, per bounded context, ...).
+
+### Single (default) stream
+
+A nameless registration adds a **non-keyed** `IStreamStoreProvisioner`. Its base table name comes from
+`TableStreamStoreOptions.StreamTableName` (default `Streamon`).
+
+```csharp
+services.AddStreamon()
+    .UseTableStorageStreamStore(connectionString, options =>
+    {
+        options.StreamTableName = "Streamon"; // base table name (default)
+        options.StreamTypeProvider = new StreamTypeProvider().RegisterTypes<OrderCaptured>();
+    });
+
+var provisioner = sp.GetRequiredService<IStreamStoreProvisioner>();
+var store  = await provisioner.CreateStoreAsync();          // table: "Streamon"
+var scoped = await provisioner.CreateStoreAsync("AcmeCo");  // table: "StreamonAcmeCo"
+```
+
+### Multiple (named) streams — keyed registration
+
+Pass a name to `AddStreamon("name")` to register more than one stream store in the same container. Each
+named registration is added with **keyed DI** under its name, and the stream name becomes the base table
+name. Resolve named provisioners with `GetRequiredKeyedService<IStreamStoreProvisioner>("name")` — named
+streams are **not** available through the non-keyed `GetService<IStreamStoreProvisioner>()`.
+
+```csharp
+services.AddStreamon("orders")
+    .UseTableStorageStreamStore(connectionString, options => options.StreamTypeProvider = orderTypes);
+
+services.AddStreamon("shipment")
+    .UseTableStorageStreamStore(connectionString, options => options.StreamTypeProvider = shipmentTypes);
+
+var orders   = sp.GetRequiredKeyedService<IStreamStoreProvisioner>("orders");
+var shipment = sp.GetRequiredKeyedService<IStreamStoreProvisioner>("shipment");
+
+await orders.CreateStoreAsync();        // table: "orders"
+await orders.CreateStoreAsync("ABC");   // table: "ordersABC"
+await shipment.CreateStoreAsync("ABC"); // table: "shipmentABC"
+await shipment.CreateStoreAsync("DEF"); // table: "shipmentDEF"
+```
+
+The provisioning `suffix` is concatenated to the stream name, so `CreateStoreAsync("ABC")` on the `orders`
+stream targets the table `ordersABC`.
+
+### Pointing a subscription at a stream
+
+The subscription stream reader and checkpoint store accept an optional `streamName` parameter used to
+compose the table to read events from. The read table name is composed as `{StreamTableName}{streamName}{suffix}`,
+so make sure it resolves to the same physical table your events were written to.
+
+```csharp
+services.AddStreamonSubscription(SubscriptionId.From("orders-sub"))
+    .UseTableStorageCheckpointStore(connectionString)
+    .UseTableStorageSubscriptionStreamReader(connectionString, streamName: "orders",
+        options => options.StreamTableName = string.Empty) // reads table: "orders"
+    .AddEventHandler<OrderCapturedHandler>();
+```
+
 ## Subscriptions
 
 The `Streamon.Subscription` package provides a pipeline for consuming events from a stream store via polling-based subscriptions. Subscriptions track their progress using checkpoints, so they can resume from where they left off after restarts.
@@ -119,12 +184,13 @@ public class OrderEventHandlers : IEventHandler<OrderCaptured>, IEventHandler<Or
 
 ### Registering Subscriptions (Dependency Injection)
 
-Use `AddStreamSubscription` to register a subscription and configure its checkpoint store, stream reader, and event handlers via the fluent builder:
+Use `AddStreamonSubscription` to register a subscription and configure its checkpoint store, stream reader, and event handlers via the fluent builder. The subscription type is set through `StreamSubscriptionOptions.StreamSubscriptionType`:
 
 ```csharp
-services.AddStreamSubscription(SubscriptionId.From("order-processing"), StreamSubscriptionType.CatchUp)
-    .UseTableStorageCheckpointStore(connectionString, streamTableName)
-    .UseTableStorageSubscriptionStreamReader(connectionString, streamTableName)
+services.AddStreamonSubscription(SubscriptionId.From("order-processing"),
+        options => options.StreamSubscriptionType = StreamSubscriptionType.CatchUp)
+    .UseTableStorageCheckpointStore(connectionString)
+    .UseTableStorageSubscriptionStreamReader(connectionString, streamName: "orders")
     .AddEventHandler<OrderCapturedHandler>()
     .AddEventHandler<OrderShippedHandler>();
 ```
@@ -132,14 +198,16 @@ services.AddStreamSubscription(SubscriptionId.From("order-processing"), StreamSu
 Multiple independent subscriptions can be registered in the same DI container — each is stored as a keyed singleton using its `SubscriptionId`:
 
 ```csharp
-services.AddStreamSubscription(SubscriptionId.From("order-processing"), StreamSubscriptionType.CatchUp)
-    .UseTableStorageCheckpointStore(connectionString, streamTableName)
-    .UseTableStorageSubscriptionStreamReader(connectionString, streamTableName)
+services.AddStreamonSubscription(SubscriptionId.From("order-processing"),
+        options => options.StreamSubscriptionType = StreamSubscriptionType.CatchUp)
+    .UseTableStorageCheckpointStore(connectionString)
+    .UseTableStorageSubscriptionStreamReader(connectionString, streamName: "orders")
     .AddEventHandler<OrderCapturedHandler>();
 
-services.AddStreamSubscription(SubscriptionId.From("analytics"), StreamSubscriptionType.Live)
-    .UseTableStorageCheckpointStore(connectionString, streamTableName)
-    .UseTableStorageSubscriptionStreamReader(connectionString, streamTableName)
+services.AddStreamonSubscription(SubscriptionId.From("analytics"),
+        options => options.StreamSubscriptionType = StreamSubscriptionType.Live)
+    .UseTableStorageCheckpointStore(connectionString)
+    .UseTableStorageSubscriptionStreamReader(connectionString, streamName: "orders")
     .AddEventHandler<AnalyticsHandler>();
 ```
 
@@ -196,7 +264,7 @@ public class OrderProjector :
 public record OrderSummary(string Id, string Product, bool IsShipped);
 ```
 
-> **Note:** The projector infrastructure (`EventProjectorBase<TProjector, TState>`) and its state read/write abstractions are still a work in progress. See the [copilot instructions](.github/copilot-instructions.md) for current status.
+> **Note:** The projector infrastructure (`EventProjectorBase<TProjector, TState>`) and its state read/write abstractions are still a work in progress. See [AGENTS.md](AGENTS.md) for current status.
 
 ### Full Example
 
@@ -216,17 +284,18 @@ public class OrderCapturedHandler : IEventHandler<OrderCaptured>
 }
 
 // 3. Register services
-services.AddStreamon()
-    .AddTableStorageStreamStore(connectionString, options =>
+services.AddStreamon("orders")
+    .UseTableStorageStreamStore(connectionString, options =>
     {
         options.StreamTypeProvider = new StreamTypeProvider()
             .RegisterTypes<OrderCaptured>()
             .RegisterTypes<OrderShipped>();
     });
 
-services.AddStreamSubscription(SubscriptionId.From("order-sub"), StreamSubscriptionType.CatchUp)
-    .UseTableStorageCheckpointStore(connectionString, "streams")
-    .UseTableStorageSubscriptionStreamReader(connectionString, "streams")
+services.AddStreamonSubscription(SubscriptionId.From("order-sub"),
+        options => options.StreamSubscriptionType = StreamSubscriptionType.CatchUp)
+    .UseTableStorageCheckpointStore(connectionString)
+    .UseTableStorageSubscriptionStreamReader(connectionString, streamName: "orders")
     .AddEventHandler<OrderCapturedHandler>();
 
 // 4. Poll in a background service

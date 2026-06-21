@@ -9,14 +9,15 @@ public static class StreamBuilderExtensions
 {
     public static StreamBuilder UseTableStorageStreamStore(this StreamBuilder builder, string connectionString, Action<TableStreamStoreOptions>? configureOptions = default)
     {
-        if (configureOptions is not null) builder.Services.Configure(configureOptions);
+        var optionsBuilder = builder.Services.AddOptions<TableStreamStoreOptions>();
+        if (configureOptions is not null) optionsBuilder.Configure(configureOptions);
         if (string.IsNullOrWhiteSpace(builder.Name))
         {
             builder.Services.TryAddScoped<IStreamStoreProvisioner>(sp =>
             {
                 TableServiceClient tableServiceClient = new(connectionString);
                 var tableStreamStoreOptions = sp.GetRequiredService<IOptions<TableStreamStoreOptions>>().Value;
-                return new TableStreamStoreProvisioner(tableStreamStoreOptions.StreamTableName, tableServiceClient, tableStreamStoreOptions);
+                return new TableStreamStoreProvisioner(string.Empty, tableServiceClient, tableStreamStoreOptions);
             });
         }
         else
@@ -33,7 +34,8 @@ public static class StreamBuilderExtensions
 
     public static StreamBuilder UseNamedTableStorageStreamStore(this StreamBuilder builder, string connectionName, Action<TableStreamStoreOptions>? configureOptions = default)
     {
-        if (configureOptions is not null) builder.Services.Configure(configureOptions);
+        var optionsBuilder = builder.Services.AddOptions<TableStreamStoreOptions>();
+        if (configureOptions is not null) optionsBuilder.Configure(configureOptions);
         if (string.IsNullOrWhiteSpace(builder.Name))
         {
             builder.Services.TryAddScoped<IStreamStoreProvisioner>(sp =>
